@@ -1,0 +1,32 @@
+# PostgreSQL partagé et reverse proxy HTTPS déjà administrés sur Docker Engine.
+x-app: &app
+  image: ${APP_IMAGE:?Définir une image immuable}
+  env_file: .env.server
+  networks: [database]
+  read_only: true
+  tmpfs: ["/tmp"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  init: true
+services:
+  migrate:
+    <<: *app
+    command: ["node", "server/migrate.js"]
+    restart: "no"
+  app:
+    <<: *app
+    restart: unless-stopped
+    networks: [database, web]
+    expose: ["3000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+networks:
+  database:
+    external: true
+    name: ${DB_NETWORK:?}
+  web:
+    external: true
+    name: ${PROXY_NETWORK:?}

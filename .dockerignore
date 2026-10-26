@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.env
+.env.*
+backups
+.demo-data
+*.xlsx
+*.csv
+*.zip
+*.dump
+*.sql.gz
+.private/
+Suivi_IHME_*.json

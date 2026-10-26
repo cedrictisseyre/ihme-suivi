@@ -1,0 +1,35 @@
+{
+  "name": "ihme-suivi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:api": "node --env-file=.env server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "db:migrate": "node server/migrate.js",
+    "db:seed": "node server/seed.js",
+    "test": "node --test tests/*.test.js",
+    "demo:local": "node server/demo.js",
+    "format": "prettier --write src server tests package.json vite.config.js",
+    "format:check": "prettier --check src server tests package.json vite.config.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "prettier": "^3.9.10",
+    "supertest": "^7.1.4",
+    "vite": "^7.1.12"
+  }
+}
