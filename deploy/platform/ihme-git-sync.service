@@ -1,0 +1,9 @@
+[Unit]
+Description=Actualisation des statistiques Git IHME
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec ihme-suivi-app-1 node server/sync-git.js
+ExecStartPost=/usr/bin/python3 /opt/ihme-platform/update-gallery.py
+TimeoutStartSec=600
+Nice=10

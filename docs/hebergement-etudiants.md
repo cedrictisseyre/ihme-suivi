@@ -96,3 +96,9 @@ python3 -m unittest discover -s tests -p '*_test.py'
 ```
 
 Les tests locaux couvrent les validations du déploiement, le refus des jetons d’un autre projet, le refus d’options supplémentaires, la sérialisation des déploiements et l’absence de noms/jetons dans la galerie générée. Sur le serveur, tester un projet fictif sain puis non sain, le rollback, la révocation, les refus SQL entre projets et l’isolation du carnet avant de distribuer les accès. Les dossiers d’accès privés ne doivent pas être envoyés sans instruction explicite de l’enseignant.
+
+## Petits graphiques d’activité Git
+
+Le carnet affiche 14 jours de commits par date, en heure de Paris. Le bouton d’actualisation recalcule aussi ces graphiques. `ihme-git-sync.timer` effectue une lecture des dépôts toutes les quatre heures ; `ihme-gallery.timer` republie les nombres agrégés dans la galerie toutes les cinq minutes, sans relire les forges. Les observations restent protégées. Les dépôts inaccessibles sont signalés ; un relevé ancien reste identifié comme tel.
+
+`/etc/ihme-gallery/projects.json` contient la correspondance privée entre identifiants, titres, chemins et URLs des dépôts. `update-gallery.py` exporte uniquement les comptes journaliers. Le répertoire `/opt/ihme-platform/public` est monté dans le proxy et ne contient que la page publique générée ; ne pas y placer la configuration ou les secrets. La pagination est plafonnée à 1 000 commits par dépôt : les relevés incomplets sont indiqués explicitement.

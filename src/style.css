@@ -389,3 +389,112 @@ footer {
   font-size: 12px;
   margin: 5px 0;
 }
+
+/* Promotion compacte : trois fiches par ligne sur ordinateur. */
+.cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.card {
+  padding: 17px 18px;
+  border-radius: 10px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.card h2 {
+  font-size: 19px;
+  margin: 9px 0;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card p {
+  min-height: 0;
+  font-size: 12px;
+  margin: 0 0 7px;
+}
+.card-objective {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card .git-summary {
+  margin-top: 5px;
+  padding-top: 8px;
+}
+.card .git-summary p {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .git-summary small {
+  font-size: 10px;
+}
+.card .progress {
+  margin: 12px 0 8px;
+  height: 4px;
+}
+.card .between {
+  font-size: 11px;
+}
+.card .tags {
+  margin-top: 10px;
+  gap: 5px;
+}
+.card .tags span {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+.commit-chart {
+  display: block;
+  margin-top: 12px;
+  text-align: left;
+  min-width: 0;
+}
+.commit-chart svg {
+  display: block;
+  width: 100%;
+  height: 45px;
+  margin: 4px 0;
+}
+.chart-caption,
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #66786b;
+  font-weight: 400;
+}
+.chart-caption {
+  font-size: 11px;
+  color: #355b46;
+}
+.chart-bar {
+  fill: #6f9460;
+}
+.chart-zero {
+  fill: #d4ddcf;
+}
+.chart-empty {
+  display: block;
+  font-size: 10px;
+  color: #7a857b;
+  margin-top: 12px;
+}
+@media (max-width: 1050px) and (min-width: 701px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

@@ -184,16 +184,26 @@ run(
     "-c",
     "SELECT pg_reload_conf();",
 )
-(installed / "gallery.html").write_text(render_gallery(rows))
-os.chmod(installed / "gallery.html", 0o644)
+public = installed / "public"
+public.mkdir(mode=0o755, exist_ok=True)
+(public / "index.html").write_text(render_gallery(rows))
+os.chmod(public / "index.html", 0o644)
+gallery_config = Path("/etc/ihme-gallery")
+gallery_config.mkdir(mode=0o700, exist_ok=True)
+(gallery_config / "projects.json").write_text(
+    json.dumps(
+        [
+            {k: r[k] for k in ["id", "title", "slug", "repository"] if k in r}
+            for r in rows
+        ]
+    )
+)
 (installed / "Caddyfile").write_text(
     render_caddy(args.teacher_host, args.student_host, rows)
 )
 # Config proxy : galerie publique statique, montée séparément de tout secret.
 # Le manifeste initial est complété via un override de volumes.
-services["proxy"]["volumes"] = [
-    str(installed / "gallery.html") + ":/srv/gallery/index.html:ro"
-]
+services["proxy"]["volumes"] = [str(installed / "public") + ":/srv/gallery:ro"]
 (installed / "compose.students.networks.json").write_text(
     json.dumps({"services": services, "networks": networks}, indent=2)
 )

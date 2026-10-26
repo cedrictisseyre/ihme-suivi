@@ -4,7 +4,7 @@ Application pédagogique React 19, Express 5, PostgreSQL. Node 24 sert React com
 
 ## Fonctionnement
 
-- Promotion : recherche, progression des six jalons, alertes de blocage, échéances et revues anciennes.
+- Promotion : cartes compactes, recherche, progression des six jalons, alertes de blocage, échéances et revues anciennes. Un mini-histogramme montre les commits par date sur les 14 derniers jours (heure de Paris).
 - Une fiche par étudiant : identifiant pédagogique, objectif, dépôt GitHub/GitLab et URL déployée.
 - **Activité Git réelle** : lecture à la demande des commits de la branche par défaut, pagination, lien vers le commit et sélection du SHA pour la revue. Aucune exécution du code étudiant.
 - Jalons : statut, échéance et preuve/observation.
@@ -104,3 +104,5 @@ Le [kit d’hébergement étudiant](docs/hebergement-etudiants.md) fournit une g
 ## Construire et déployer depuis GitHub
 
 Le [guide commun enseignant/étudiants](docs/deployer-son-projet.md) explique le Dockerfile, la construction automatique après un push, le digest et le déploiement volontaire depuis GitHub Actions. Le modèle complet à copier dans un dépôt étudiant est dans `docs/templates/student/`. Les secrets sont configurés dans GitHub Actions et ne sont pas versionnés.
+
+Les graphiques Git sont calculés sur la branche par défaut, avec pagination et dédoublonnage des SHA. La collecte est plafonnée à 1 000 commits par dépôt ; une collecte plafonnée est explicitement indiquée comme partielle. Une erreur de lecture conserve le dernier relevé disponible, sans inventer de zéro. La galerie ne reçoit que des nombres de commits par jour : aucun nom, message de commit, jeton ou observation enseignant.

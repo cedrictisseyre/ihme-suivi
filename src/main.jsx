@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import CommitChart from "./CommitChart.jsx";
 async function api(url, method = "GET", body) {
   const r = await fetch("/api" + url, {
     method,
@@ -301,7 +302,9 @@ function App() {
                   >
                     <span className="eyebrow">{p.student_name}</span>
                     <h2>{p.title}</h2>
-                    <p>{p.objective}</p>
+                    {p.objective && (
+                      <p className="card-objective">{p.objective}</p>
+                    )}
                     <div className="git-summary">
                       {p.git ? (
                         <>
@@ -321,6 +324,10 @@ function App() {
                         <p>Activité Git à actualiser</p>
                       )}
                     </div>
+                    <CommitChart
+                      activity={p.git?.daily_activity}
+                      stale={!!p.git?.error}
+                    />
                     <div className="progress">
                       <span style={{ width: p.progress + "%" }} />
                     </div>

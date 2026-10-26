@@ -1,4 +1,5 @@
 import express from "express";
+import { syncProjects } from "./sync-git.js";
 import { getActivity } from "./git.js";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -154,49 +155,7 @@ export function createApp(db, config) {
     "/api/projects/sync",
     rateLimit({ windowMs: 60000, limit: 1, legacyHeaders: false }),
     async (req, res) => {
-      const projects = (
-        await db.query(
-          "SELECT id,repository_url FROM projects WHERE repository_url<>'' ORDER BY id",
-        )
-      ).rows;
-      let success = 0,
-        failed = 0;
-      // Petits groupes pour ne pas saturer les forges ; aucune donnée nominative transmise.
-      for (let i = 0; i < projects.length; i += 3)
-        await Promise.all(
-          projects.slice(i, i + 3).map(async (p) => {
-            try {
-              const data = await getActivity(p.repository_url, {
-                githubToken: config.githubToken,
-                gitlabToken: config.gitlabToken,
-                fetcher: config.gitFetch,
-              });
-              const last = data.commits[0];
-              await db.query(
-                "INSERT INTO git_snapshots(project_id,last_sha,last_title,last_committed_at) VALUES($1,$2,$3,$4) ON CONFLICT(project_id) DO UPDATE SET last_sha=EXCLUDED.last_sha,last_title=EXCLUDED.last_title,last_committed_at=EXCLUDED.last_committed_at,checked_at=now(),error=''",
-                [
-                  p.id,
-                  last?.sha || null,
-                  last?.title || null,
-                  last?.date || null,
-                ],
-              );
-              success++;
-            } catch (e) {
-              await db.query(
-                "INSERT INTO git_snapshots(project_id,error) VALUES($1,$2) ON CONFLICT(project_id) DO UPDATE SET error=EXCLUDED.error,checked_at=now()",
-                [
-                  p.id,
-                  e.status && e.status <= 502
-                    ? e.message
-                    : "Lecture Git impossible : vérifier le lien, les droits ou le quota.",
-                ],
-              );
-              failed++;
-            }
-          }),
-        );
-      res.json({ success, failed });
+      res.json(await syncProjects(db, config));
     },
   );
   app.get(

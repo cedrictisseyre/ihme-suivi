@@ -39,15 +39,25 @@ export function repositoryAddress(value) {
 }
 export async function getActivity(
   value,
-  { page = 1, githubToken = "", gitlabToken = "", fetcher = fetch } = {},
+  {
+    page = 1,
+    perPage = 20,
+    since = "",
+    githubToken = "",
+    gitlabToken = "",
+    fetcher = fetch,
+  } = {},
 ) {
   const repo = repositoryAddress(value);
   if (!Number.isInteger(page) || page < 1 || page > 100)
     throw new InputError("Page invalide.");
+  if (!Number.isInteger(perPage) || perPage < 1 || perPage > 100)
+    throw new InputError("Taille de page invalide.");
+  const suffix = since ? `&since=${encodeURIComponent(since)}` : "";
   const github = repo.provider === "github";
   const url = github
-    ? `https://api.github.com/repos/${repo.path}/commits?per_page=20&page=${page}`
-    : `https://gitlab.com/api/v4/projects/${encodeURIComponent(repo.path)}/repository/commits?per_page=20&page=${page}`;
+    ? `https://api.github.com/repos/${repo.path}/commits?per_page=${perPage}&page=${page}${suffix}`
+    : `https://gitlab.com/api/v4/projects/${encodeURIComponent(repo.path)}/repository/commits?per_page=${perPage}&page=${page}${suffix}`;
   const headers = github
     ? {
         Accept: "application/vnd.github+json",
@@ -77,6 +87,7 @@ export async function getActivity(
       hasNext: false,
       fetchedAt: new Date().toISOString(),
       commits: [],
+      empty: true,
     };
   }
   if (!response.ok) {
@@ -103,7 +114,7 @@ export async function getActivity(
     repository: repo.url,
     provider: repo.provider,
     page,
-    hasNext: data.length === 20,
+    hasNext: data.length === perPage,
     fetchedAt: new Date().toISOString(),
     commits: data.map((c) => ({
       sha: github ? c.sha : c.id,
@@ -113,5 +124,62 @@ export async function getActivity(
         ? `${repo.url}/commit/${c.sha}`
         : `${repo.url}/-/commit/${c.id}`,
     })),
+  };
+}
+
+const parisDay = (value) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+export function dailyCounts(commits, now = new Date()) {
+  const today = parisDay(now);
+  const end = Date.parse(today + "T00:00:00Z");
+  const days = Array.from({ length: 14 }, (_, i) => ({
+    date: new Date(end - (13 - i) * 86400000).toISOString().slice(0, 10),
+    count: 0,
+  }));
+  const byDay = new Map(days.map((day) => [day.date, day]));
+  const seen = new Set();
+  for (const commit of commits) {
+    if (
+      !commit.sha ||
+      seen.has(commit.sha) ||
+      !Number.isFinite(Date.parse(commit.date))
+    )
+      continue;
+    seen.add(commit.sha);
+    const day = byDay.get(parisDay(commit.date));
+    if (day) day.count++;
+  }
+  return days;
+}
+export async function getCommitSummary(value, options = {}) {
+  const now = options.now || new Date();
+  const days = dailyCounts([], now);
+  // Marge d’un jour pour inclure le début du premier jour en heure de Paris, même au changement d’heure.
+  const since = new Date(
+    Date.parse(days[0].date + "T00:00:00Z") - 86400000,
+  ).toISOString();
+  const commits = [];
+  let data;
+  for (let page = 1; page <= 10; page++) {
+    data = await getActivity(value, { ...options, page, perPage: 100, since });
+    commits.push(...data.commits);
+    if (!data.hasNext) break;
+  }
+  let last = commits[0];
+  if (!last && !data.empty)
+    last = (await getActivity(value, { ...options, page: 1, perPage: 1 }))
+      .commits[0];
+  return {
+    last,
+    activity: {
+      days: dailyCounts(commits, now),
+      complete: !data.hasNext,
+      timeZone: "Europe/Paris",
+    },
   };
 }

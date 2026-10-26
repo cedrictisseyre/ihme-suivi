@@ -1,0 +1,7 @@
+[Unit]
+Description=Rafraichissement des graphiques publics IHME
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

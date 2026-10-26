@@ -52,3 +52,5 @@ CREATE TABLE IF NOT EXISTS git_snapshots (
   checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   error TEXT NOT NULL DEFAULT ''
 );
+
+ALTER TABLE git_snapshots ADD COLUMN IF NOT EXISTS daily_activity JSONB;

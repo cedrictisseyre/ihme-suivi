@@ -1,0 +1,7 @@
+[Unit]
+Description=Mise a jour de la galerie depuis les statistiques privees
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/ihme-platform/update-gallery.py
+Nice=10
