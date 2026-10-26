@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function CommitChart({ activity, stale = false }) {
   const days = activity?.days;
   if (!Array.isArray(days) || !days.length)
@@ -34,9 +36,7 @@ export default function CommitChart({ activity, stale = false }) {
             rx="2"
             className={d.count ? "chart-bar" : "chart-zero"}
           >
-            <title>
-              {dateLabel(d.date)} : {d.count} commit{d.count !== 1 ? "s" : ""}
-            </title>
+            <title>{`${dateLabel(d.date)} : ${d.count} commit${d.count !== 1 ? "s" : ""}`}</title>
           </rect>
         ))}
       </svg>
