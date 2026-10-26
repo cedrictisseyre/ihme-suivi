@@ -1,0 +1,41 @@
+# Fichier installé et détenu par root. Aucun étudiant ne modifie cette stack.
+services:
+  app:
+    image: ${STUDENT_IMAGE_REPOSITORY:?}@${IMAGE_DIGEST:?}
+    restart: unless-stopped
+    user: "1000:1000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 0.25
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?}
+    expose: ["3000"]
+    networks:
+      database: {}
+      web:
+        aliases: ["${STUDENT_ID:?}"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+networks:
+  database:
+    external: true
+    name: ${DB_NETWORK:?}
+  web:
+    external: true
+    name: ${PROXY_NETWORK:?}

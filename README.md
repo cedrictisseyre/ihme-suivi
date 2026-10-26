@@ -96,3 +96,7 @@ docker compose exec -T app node server/import-roster.js < .private/roster.json
 ```
 
 L’import est transactionnel, ajoute les six jalons et ignore les dépôts déjà présents sans écraser les observations. Il ne crée aucune revue et n’invente aucune évaluation à partir des mails. Les noms, liens et observations réels restent dans PostgreSQL et les fichiers privés locaux ; ne jamais utiliser `git add -f` pour ces fichiers. Pour la démonstration fictive et le suivi réel, utiliser des bases/volumes distincts.
+
+## Hébergement des applications étudiantes
+
+Le [kit d’hébergement étudiant](docs/hebergement-etudiants.md) prépare des déploiements par projet sur le même Docker Engine, avec une base/rôle SQL dédiés, des réseaux séparés, des limites de ressources et une commande SSH contrainte à un digest d’image. Il doit être installé et testé par l’administrateur après inspection du serveur ; il n’accorde aucun accès automatiquement.
