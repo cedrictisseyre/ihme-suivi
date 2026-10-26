@@ -1,6 +1,8 @@
 # Démonstration de déploiement — Infomaniak Docker Engine
 
-Ce document prépare une intervention future. **Aucun déploiement serveur n’a été effectué.** Utiliser Docker Engine/Compose directement, sans Coolify. Node expose un seul port interne 3000 pour React compilé et `/api`.
+Ce document décrit la procédure de déploiement et sa démonstration. Utiliser Docker Engine/Compose directement sur le nœud Jelastic, sans Coolify. Node expose un seul port interne 3000 pour React compilé et `/api`.
+
+Le carnet et la galerie étudiante sont deux sites HTTPS distincts, sur le même hôte Docker. Leurs adresses et les mots de passe de production ne sont pas stockés dans le dépôt public. Les accès administrateur sont conservés séparément dans les fichiers privés d’exploitation.
 
 ## Architecture et prérequis
 
@@ -29,7 +31,7 @@ git rev-parse HEAD
 docker buildx build --platform linux/amd64 -t ghcr.io/cedrictisseyre/ihme-suivi:SHA --push .
 ```
 
-Cette commande publie une image ; elle est fournie pour la démonstration et n’est pas exécutée automatiquement. S’authentifier au registre via son mécanisme sécurisé, sans inscrire de jeton dans le dépôt ou dans l’historique du shell. Pour une distribution sans registre, utiliser `docker save` puis `docker load` sur l’hôte cible.
+Cette commande publie une image ; elle n’est pas exécutée automatiquement. Il est aussi possible de transférer une archive des seuls fichiers versionnés et de construire l’image directement sur le nœud cible. Exclure impérativement les fichiers privés et les données étudiantes du contexte de build. S’authentifier au registre via son mécanisme sécurisé, sans inscrire de jeton dans le dépôt ou dans l’historique du shell. Pour une distribution sans registre, utiliser `docker save` puis `docker load` sur l’hôte cible.
 
 ## 2. Créer le rôle et la base dédiés sur le PostgreSQL partagé
 
@@ -65,7 +67,7 @@ Adapter `deploy/nginx.conf.example` au proxy existant : il relaie **tous** les c
 
 Ne pas rendre le service directement accessible en HTTP public. L’application ne fait pas confiance aux en-têtes proxy pour calculer l’adresse IP : le quota est donc partagé derrière un proxy. Configurer aussi une limitation des essais de connexion au niveau du proxy si plusieurs enseignants utilisent l’instance.
 
-## 5. Migration et lancement (intervention future)
+## 5. Migration et lancement
 
 ```sh
 docker compose --env-file .env.server -f compose.server.yaml config --quiet
@@ -112,3 +114,13 @@ Les sessions sont stockées en base : les révoquer après restauration d’un d
 - [API commits GitLab](https://docs.gitlab.com/api/commits/)
 
 La configuration est une stack Docker Engine standard à adapter au serveur Infomaniak existant ; elle ne dépend pas des offres Jelastic ou d’hébergement web mutualisé.
+
+## Infrastructure et galerie étudiantes
+
+Sur un Docker Engine neuf, `deploy/platform/compose.yaml` fournit PostgreSQL et Caddy. Créer les réseaux externes, copier `env.platform.example` en `.env.platform` privé, puis démarrer PostgreSQL, créer la base/rôle propres au carnet et appliquer la migration avant de lancer le proxy. Le mot de passe administrateur du cluster est différent de celui de la base IHME.
+
+Le kit utilise `/opt/ihme-suivi` pour le code, `/opt/ihme-platform` pour les outils installés, `/etc/ihme-students` pour les configurations root des projets et `/var/backups/ihme` pour les sauvegardes locales. Le guide [hébergement étudiant](hebergement-etudiants.md) décrit les affectations privées, le provisionnement, les chemins React/Express et l’API HTTPS. Ne pas recréer la stack PostgreSQL sans son manifeste de réseaux étudiants généré.
+
+Après installation, contrôler les deux certificats HTTPS, les 20 fiches privées, les 20 liens de galerie, l’absence de noms/jetons dans la page publique, le refus d’accès aux données sans session et le refus d’une mutation provenant du site étudiant. Tester le déploiement d’une application fictive puis son rollback avant de distribuer les accès. Les applications de test doivent être retirées à la fin de la recette.
+
+Le timer `ihme-backup.timer` exécute la sauvegarde des bases chaque nuit vers 03 h 20 Europe/Paris ; sept versions locales sont conservées. Vérifier un premier dump et prévoir une copie chiffrée hors serveur. Aucune augmentation Jelastic ni distribution d’accès par mail n’est automatique.

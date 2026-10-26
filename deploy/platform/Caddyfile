@@ -1,0 +1,9 @@
+{
+    admin localhost:2019
+}
+{$PUBLIC_HOST} {
+    encode zstd gzip
+    reverse_proxy ihme-app:3000
+}
+# Ajouter les hôtes étudiants uniquement après configuration de leur DNS
+# et de leurs réseaux isolés. Ne pas utiliser des chemins sous le site enseignant.

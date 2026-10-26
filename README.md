@@ -79,7 +79,7 @@ Une seule identité enseignante est prévue pour ce cours ; pas de comptes étud
 
 ## Déploiement
 
-Voir [le guide Infomaniak et son scénario de démonstration](docs/deploiement.md). Configuration pour un **serveur Infomaniak administré disposant de Docker Engine et Compose**, avec PostgreSQL partagé déjà présent. Les noms du conteneur PostgreSQL, des réseaux et du reverse proxy sont à adapter à l’infrastructure existante ; aucune hypothèse d’accès au serveur n’a été vérifiée et aucune commande distante n’a été exécutée.
+Voir [le guide Infomaniak et son scénario de démonstration](docs/deploiement.md). Configuration pour un **serveur Infomaniak administré disposant de Docker Engine et Compose**, avec PostgreSQL partagé déjà présent. Les noms du conteneur PostgreSQL, des réseaux et du reverse proxy sont à adapter à l’infrastructure existante. `deploy/platform/` fournit la stack PostgreSQL/Caddy et les outils administratifs de galerie, de provisionnement et de sauvegarde.
 
 ### Importer une promotion réelle en privé
 
@@ -99,4 +99,4 @@ L’import est transactionnel, ajoute les six jalons et ignore les dépôts déj
 
 ## Hébergement des applications étudiantes
 
-Le [kit d’hébergement étudiant](docs/hebergement-etudiants.md) prépare des déploiements par projet sur le même Docker Engine, avec une base/rôle SQL dédiés, des réseaux séparés, des limites de ressources et une commande SSH contrainte à un digest d’image. Il doit être installé et testé par l’administrateur après inspection du serveur ; il n’accorde aucun accès automatiquement.
+Le [kit d’hébergement étudiant](docs/hebergement-etudiants.md) fournit une galerie, un déploiement HTTPS par jeton et digest d’image, une base/rôle SQL par projet, des réseaux séparés et des limites de ressources. Le carnet enseignant reste sur une origine distincte. Les affectations réelles, accès individuels et informations de production restent dans `.private/` et les configurations serveur, hors du dépôt public.

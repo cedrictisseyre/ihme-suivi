@@ -1,0 +1,8 @@
+[Unit]
+Description=Sauvegarde quotidienne IHME
+[Timer]
+OnCalendar=*-*-* 03:20:00 Europe/Paris
+RandomizedDelaySec=10m
+Persistent=true
+[Install]
+WantedBy=timers.target
