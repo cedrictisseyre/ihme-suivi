@@ -2,6 +2,8 @@
 x-app: &app
   image: ${APP_IMAGE:?Définir une image immuable}
   env_file: .env.server
+  environment:
+    APP_VERSION: ${APP_VERSION:-local}
   networks: [database]
   read_only: true
   tmpfs: ["/tmp"]

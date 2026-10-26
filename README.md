@@ -100,3 +100,7 @@ L’import est transactionnel, ajoute les six jalons et ignore les dépôts déj
 ## Hébergement des applications étudiantes
 
 Le [kit d’hébergement étudiant](docs/hebergement-etudiants.md) fournit une galerie, un déploiement HTTPS par jeton et digest d’image, une base/rôle SQL par projet, des réseaux séparés et des limites de ressources. Le carnet enseignant reste sur une origine distincte. Les affectations réelles, accès individuels et informations de production restent dans `.private/` et les configurations serveur, hors du dépôt public.
+
+## Construire et déployer depuis GitHub
+
+Le [guide commun enseignant/étudiants](docs/deployer-son-projet.md) explique le Dockerfile, la construction automatique après un push, le digest et le déploiement volontaire depuis GitHub Actions. Le modèle complet à copier dans un dépôt étudiant est dans `docs/templates/student/`. Les secrets sont configurés dans GitHub Actions et ne sont pas versionnés.

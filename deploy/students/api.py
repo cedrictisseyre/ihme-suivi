@@ -14,6 +14,8 @@ import os
 
 BASE = Path("/etc/ihme-students")
 EXECUTABLE = "/usr/local/sbin/ihme-student-deploy"
+TEACHER_BASE = Path("/etc/ihme-teacher")
+TEACHER_EXECUTABLE = "/usr/local/sbin/ihme-teacher-deploy"
 SOCKET = "/run/ihme-deploy/http.sock"
 GATE = threading.Lock()
 
@@ -33,13 +35,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.connection.settimeout(15)
-        match = re.fullmatch(r"/__deploy/(p[0-9]{2})", self.path)
+        match = re.fullmatch(r"/__deploy/(p[0-9]{2}|suivi)", self.path)
         if not match:
             return self.reply(404, {"error": "Route inconnue."})
         project = match.group(1)
         token = self.headers.get("Authorization", "")
         try:
-            expected = (BASE / project / ".deploy-token.sha256").read_text().strip()
+            folder = TEACHER_BASE if project == "suivi" else BASE / project
+            expected = (folder / ".deploy-token.sha256").read_text().strip()
         except OSError:
             expected = "0" * 64
         if (
@@ -59,8 +62,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if (
                 not isinstance(data, dict)
-                or set(data) != {"digest"}
+                or not {"digest"} <= set(data) <= {"digest", "registry_token"}
                 or not isinstance(data["digest"], str)
+            ):
+                raise ValueError()
+            registry_token = data.get("registry_token", "")
+            if (
+                not isinstance(registry_token, str)
+                or len(registry_token) > 2048
+                or any(ord(c) < 33 or ord(c) > 126 for c in registry_token)
             ):
                 raise ValueError()
             digest = data["digest"]
@@ -74,13 +84,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 {"error": "Un déploiement est en cours. Réessayez dans une minute."},
             )
         try:
+            command = (
+                [TEACHER_EXECUTABLE] if project == "suivi" else [EXECUTABLE, project]
+            )
+            environment = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/root"}
+            if registry_token:
+                environment["IHME_REGISTRY_TOKEN"] = registry_token
             result = subprocess.run(
-                [EXECUTABLE, project],
+                command,
                 input=digest + "\n",
                 text=True,
                 capture_output=True,
                 timeout=450,
-                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/root"},
+                env=environment,
             )
             if result.returncode:
                 print(project + ": déploiement refusé ou non sain.", flush=True)

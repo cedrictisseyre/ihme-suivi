@@ -21,11 +21,17 @@ class DeployAPI(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.original_base = api.BASE
+        cls.original_teacher_base = api.TEACHER_BASE
         api.BASE = Path(cls.tmp.name)
         project = api.BASE / "p01"
         project.mkdir()
         (project / ".deploy-token.sha256").write_text(
             hashlib.sha256(b"fixture-token").hexdigest()
+        )
+        api.TEACHER_BASE = api.BASE / "teacher"
+        api.TEACHER_BASE.mkdir()
+        (api.TEACHER_BASE / ".deploy-token.sha256").write_text(
+            hashlib.sha256(b"teacher-fixture").hexdigest()
         )
         cls.path = str(api.BASE / "test.sock")
         cls.server = api.Server(cls.path, api.Handler)
@@ -38,6 +44,7 @@ class DeployAPI(unittest.TestCase):
         cls.server.server_close()
         cls.thread.join()
         api.BASE = cls.original_base
+        api.TEACHER_BASE = cls.original_teacher_base
         cls.tmp.cleanup()
 
     def call(self, project="p01", token="fixture-token", data=None):
@@ -68,6 +75,33 @@ class DeployAPI(unittest.TestCase):
     def test_token_cannot_deploy_another_project(self):
         self.assertEqual(self.call(project="p02")[0], 401)
         self.assertEqual(self.call(token="incorrect")[0], 401)
+
+    def test_teacher_has_a_separate_token_and_fixed_command(self):
+        self.assertEqual(self.call(project="suivi")[0], 401)
+        self.assertEqual(self.call(token="teacher-fixture")[0], 401)
+        with patch.object(api.subprocess, "run") as execute:
+            execute.return_value.returncode = 0
+            self.assertEqual(
+                self.call(project="suivi", token="teacher-fixture")[0], 200
+            )
+            self.assertEqual(execute.call_args.args[0], [api.TEACHER_EXECUTABLE])
+
+    def test_registry_token_is_transient_and_not_a_command_argument(self):
+        with patch.object(api.subprocess, "run") as execute:
+            execute.return_value.returncode = 0
+            data = {
+                "digest": "sha256:" + "a" * 64,
+                "registry_token": "ephemeral-fixture",
+            }
+            self.assertEqual(self.call(data=data)[0], 200)
+            self.assertEqual(
+                execute.call_args.kwargs["env"]["IHME_REGISTRY_TOKEN"],
+                "ephemeral-fixture",
+            )
+            self.assertNotIn("ephemeral-fixture", str(execute.call_args.args))
+            self.assertEqual(
+                self.call(data={**data, "registry_token": "bad\nvalue"})[0], 400
+            )
 
     def test_bad_digest_or_extra_options_never_execute(self):
         with patch.object(api.subprocess, "run") as execute:

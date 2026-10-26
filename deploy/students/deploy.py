@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import time
+import tempfile
 
 BASE = Path("/etc/ihme-students")
 TEMPLATE = Path("/opt/ihme-platform/compose.student.yaml")
@@ -96,7 +97,31 @@ def deploy(project, digest):
             raise ValueError("Un déploiement par minute maximum.")
         stamp.touch(mode=0o600)
         compose("config", "--quiet")
-        compose("pull", "app")
+        registry_token = os.environ.pop("IHME_REGISTRY_TOKEN", "")
+        with tempfile.TemporaryDirectory(prefix="ihme-pull-") as auth:
+            if registry_token:
+                reference = compose("config", "--images").strip()
+                if not reference.startswith("ghcr.io/"):
+                    raise ValueError("Le jeton éphémère fourni est réservé à ghcr.io.")
+                environment["DOCKER_CONFIG"] = auth
+                subprocess.run(
+                    [
+                        "docker",
+                        "login",
+                        "ghcr.io",
+                        "--username",
+                        reference.split("/")[1],
+                        "--password-stdin",
+                    ],
+                    input=registry_token,
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                    timeout=30,
+                )
+            compose("pull", "app")
+        environment.pop("DOCKER_CONFIG", None)
         reference = compose("config", "--images").strip()
         inspected = subprocess.run(
             ["docker", "image", "inspect", "--format", "{{json .Config}}", reference],
@@ -108,12 +133,30 @@ def deploy(project, digest):
         )
         validate_image_config(json.loads(inspected.stdout))
         try:
-            compose("up", "-d", "--no-build", "--wait", "--wait-timeout", "60", "app")
+            compose(
+                "up",
+                "-d",
+                "--no-build",
+                "--pull",
+                "never",
+                "--wait",
+                "--wait-timeout",
+                "60",
+                "app",
+            )
         except subprocess.SubprocessError:
             if previous:
                 environment["IMAGE_DIGEST"] = previous
                 compose(
-                    "up", "-d", "--no-build", "--wait", "--wait-timeout", "60", "app"
+                    "up",
+                    "-d",
+                    "--no-build",
+                    "--pull",
+                    "never",
+                    "--wait",
+                    "--wait-timeout",
+                    "60",
+                    "app",
                 )
                 raise ValueError(
                     "Nouvelle version non saine ; version précédente rétablie."

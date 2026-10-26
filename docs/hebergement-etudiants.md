@@ -20,7 +20,7 @@ curl --config deploy.curl --data '{"digest":"sha256:REMPLACER_PAR_64_CARACTERES"
 
 Le jeton autorise uniquement la publication dans l’espace auquel il est affecté. Le serveur refuse les tags variables comme `latest`, les options Docker, les volumes déclarés par les images et les déploiements concurrents. Une tentative par minute est permise par projet. Si la nouvelle image ne devient pas saine, la version précédente est rétablie ; pour un premier déploiement défaillant, le conteneur est arrêté. Le rollback applicatif ne restaure pas les données SQL.
 
-Pour un registre privé, l’administrateur configure un accès en lecture côté serveur. Un dépôt privé sans cet accès ne peut pas être téléchargé. Un jeton de registre global en écriture ne doit jamais être distribué à la promotion.
+Le [modèle GitHub Actions fourni](deployer-son-projet.md) peut transmettre un jeton GHCR éphémère, supprimé du serveur après téléchargement. Pour un autre registre privé, l’administrateur configure un accès en lecture côté serveur. Un dépôt privé sans cet accès ne peut pas être téléchargé. Un jeton de registre global en écriture ne doit jamais être distribué à la promotion.
 
 ## Contrat d’une application
 

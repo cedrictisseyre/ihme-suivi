@@ -14,7 +14,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/etc/ihme-students /run/ihme-deploy
+ReadWritePaths=/etc/ihme-students /etc/ihme-teacher /opt/ihme-suivi /var/backups/ihme /run/ihme-deploy
 MemoryMax=96M
 TasksMax=64
 [Install]
