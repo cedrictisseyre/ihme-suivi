@@ -1,4 +1,8 @@
 import express from "express";
+import { analyzeProject, analyzePromotion } from "./analyze-progress.js";
+import { attachProgress } from "./progression.js";
+import { RUBRIC, ASSESSMENT_GUIDE } from "./rubric.js";
+import { projectSite } from "./project-sites.js";
 import { syncProjects } from "./sync-git.js";
 import { getActivity } from "./git.js";
 import helmet from "helmet";
@@ -102,8 +106,30 @@ export function createApp(db, config) {
     res.set("Set-Cookie", cookie("") + "; Max-Age=0").json({ ok: true });
   });
   app.get("/api/meta", (req, res) =>
-    res.json({ milestones: MILESTONES, criteria: CRITERIA }),
+    res.json({
+      milestones: MILESTONES,
+      criteria: CRITERIA,
+      rubric: RUBRIC,
+      assessmentGuide: ASSESSMENT_GUIDE,
+    }),
   );
+  app.get("/api/project-previews/:filename", (req, res) => {
+    if (!/^p(?:0[1-9]|1[0-9]|20)-[a-f0-9]{64}\.jpg$/.test(req.params.filename))
+      return res.status(404).json({ error: "Miniature introuvable." });
+    res.sendFile(
+      req.params.filename,
+      {
+        root: path.resolve(
+          config.previewsPath || "/run/ihme-gallery/public/previews",
+        ),
+        dotfiles: "deny",
+      },
+      (error) => {
+        if (error && !res.headersSent)
+          res.status(404).json({ error: "Miniature indisponible." });
+      },
+    );
+  });
   async function project(id) {
     const p = (await db.query("SELECT * FROM projects WHERE id=$1", [id]))
       .rows[0];
@@ -138,13 +164,46 @@ export function createApp(db, config) {
           : String(m.due_date).slice(0, 10)
         : null,
     }));
-    return { ...p, ...projectSignals(p) };
+    const enriched = await attachProgress(db, p);
+    return {
+      ...enriched,
+      ...projectSignals(enriched),
+      site: await projectSite(p, config),
+    };
   }
   app.param("id", (req, res, next, id) => {
     if (!/^[1-9]\d{0,8}$/.test(id))
       return res.status(400).json({ error: "Identifiant invalide." });
     next();
   });
+  let analysisJob = { running: false, result: null, error: "" };
+  app.get("/api/progression-job", (req, res) => res.json(analysisJob));
+  app.post("/api/projects/analyze", (req, res) => {
+    if (analysisJob.running)
+      return res.status(409).json({ error: "Une analyse est déjà en cours." });
+    analysisJob = { running: true, result: null, error: "" };
+    res.status(202).json(analysisJob);
+    analyzePromotion(db, config)
+      .then((result) => {
+        analysisJob = { running: false, result, error: "" };
+      })
+      .catch(() => {
+        analysisJob = {
+          running: false,
+          result: null,
+          error: "Analyse interrompue. Relancer après vérification du serveur.",
+        };
+      });
+  });
+  app.post(
+    "/api/projects/:id/analyze",
+    rateLimit({ windowMs: 60000, limit: 30, legacyHeaders: false }),
+    async (req, res) => {
+      const p = await project(req.params.id);
+      await analyzeProject(db, p, { ...config, force: true });
+      res.json(await project(p.id));
+    },
+  );
   app.get("/api/projects", async (req, res) => {
     const ids = (
       await db.query("SELECT id FROM projects ORDER BY student_name")
@@ -212,13 +271,15 @@ export function createApp(db, config) {
     )
       throw new InputError("Jalon ou statut invalide.");
     await db.query(
-      "UPDATE milestones SET status=$1,due_date=$2,evidence=$3,updated_at=now() WHERE project_id=$4 AND position=$5",
+      "UPDATE milestones SET status=$1,due_date=$2,evidence=$3,manual_override=$6,public_note=$7,updated_at=now() WHERE project_id=$4 AND position=$5",
       [
         v.status,
         date(v.due_date, false),
         text(v.evidence || "", "Preuve"),
         req.params.id,
         req.params.position,
+        v.manual_override !== false,
+        text(v.public_note || "", "Retour public"),
       ],
     );
     res.json(await project(req.params.id));
@@ -232,7 +293,7 @@ export function createApp(db, config) {
         "Commit : SHA Git de 7 à 40 caractères hexadécimaux.",
       );
     await db.query(
-      "INSERT INTO reviews(project_id,reviewed_on,commit_ref,achievements,blocker,next_step,assistance) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      "INSERT INTO reviews(project_id,reviewed_on,commit_ref,achievements,blocker,next_step,assistance,public_visible) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
       [
         req.params.id,
         date(v.reviewed_on),
@@ -241,17 +302,41 @@ export function createApp(db, config) {
         text(v.blocker || "", "Blocage"),
         text(v.next_step, "Prochaine étape", { required: true }),
         text(v.assistance || "", "Aide"),
+        v.public_visible === true,
       ],
     );
     res.status(201).json(await project(req.params.id));
   });
+  app.put(
+    "/api/projects/:id/reviews/:reviewId/publication",
+    async (req, res) => {
+      await project(req.params.id);
+      if (
+        !/^[1-9]\d{0,8}$/.test(req.params.reviewId) ||
+        typeof req.body.public_visible !== "boolean"
+      )
+        throw new InputError("Publication invalide.");
+      const result = await db.query(
+        "UPDATE reviews SET public_visible=$1 WHERE project_id=$2 AND id=$3 RETURNING id",
+        [req.body.public_visible, req.params.id, req.params.reviewId],
+      );
+      if (!result.rows.length)
+        return res.status(404).json({ error: "Revue introuvable." });
+      res.json(await project(req.params.id));
+    },
+  );
   app.put("/api/projects/:id/assessment", async (req, res) => {
     await project(req.params.id);
     const v = assessmentInput(req.body);
     const keys = CRITERIA.map((x) => x.key);
     await db.query(
-      `INSERT INTO assessments(project_id,${keys.join(",")},comment) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(project_id) DO UPDATE SET ${keys.map((k) => `${k}=EXCLUDED.${k}`).join(",")},comment=EXCLUDED.comment,updated_at=now()`,
-      [req.params.id, ...keys.map((k) => v[k]), v.comment],
+      `INSERT INTO assessments(project_id,${keys.join(",")},comment,public_visible) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(project_id) DO UPDATE SET ${keys.map((k) => `${k}=EXCLUDED.${k}`).join(",")},comment=EXCLUDED.comment,public_visible=EXCLUDED.public_visible,updated_at=now()`,
+      [
+        req.params.id,
+        ...keys.map((k) => v[k]),
+        v.comment,
+        req.body.public_visible === true,
+      ],
     );
     res.json(await project(req.params.id));
   });

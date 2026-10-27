@@ -1,3 +1,4 @@
+import { analyzePromotion } from "./analyze-progress.js";
 import { getCommitSummary } from "./git.js";
 import { createDatabase } from "./db.js";
 
@@ -55,6 +56,14 @@ if (process.argv[1]?.endsWith("/sync-git.js")) {
           gitlabToken: process.env.GITLAB_TOKEN,
         }),
       ),
+    );
+    console.log(
+      JSON.stringify({
+        progression: await analyzePromotion(db, {
+          githubToken: process.env.GITHUB_TOKEN,
+          gitlabToken: process.env.GITLAB_TOKEN,
+        }),
+      }),
     );
   } finally {
     await db.close();

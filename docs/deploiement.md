@@ -124,3 +124,28 @@ Le kit utilise `/opt/ihme-suivi` pour le code, `/opt/ihme-platform` pour les out
 Après installation, contrôler les deux certificats HTTPS, les 20 fiches privées, les 20 liens de galerie, les noms étudiants autorisés et l’absence d’adresses mail, jetons ou observations dans la page publique, le refus d’accès aux données sans session et le refus d’une mutation provenant du site étudiant. Tester le déploiement d’une application fictive puis son rollback avant de distribuer les accès. Les applications de test doivent être retirées à la fin de la recette.
 
 Le timer `ihme-backup.timer` exécute la sauvegarde des bases chaque nuit vers 03 h 20 Europe/Paris ; sept versions locales sont conservées. Vérifier un premier dump et prévoir une copie chiffrée hors serveur. Aucune augmentation Jelastic ni distribution d’accès par mail n’est automatique.
+
+## Miniatures et numéros des projets dans le carnet
+
+La liste de promotion et les fiches détaillées affichent le numéro attribué (P1 à P20), le lien vers le site et le dernier aperçu enregistré par le service de miniatures. Le numéro est retrouvé par correspondance du dépôt avec `/etc/ihme-gallery/projects.json` ; il ne dépend pas de l’identifiant SQL ni de l’ordre alphabétique des étudiants.
+
+Dans `.env.server`, définir `STUDENT_ORIGIN` avec l’origine HTTPS de la galerie étudiante. Le lien est construit à partir de cette origine et du chemin attribué au projet. Sans cette variable, le carnet utilise le champ « Application déployée » de la fiche.
+
+Le script `deploy/platform/update-gallery.py` produit un index limité aux numéros, dépôts et chemins dans `/opt/ihme-platform/teacher-sites/projects.json`, lisible par Node sans privilèges. Le service `app` de `compose.server.yaml` monte en lecture seule ce répertoire et `/opt/ihme-platform/public`. Aucun accès aux affectations administratives, aux jetons de déploiement ou au socket Docker n’est nécessaire. Lors d’une mise à jour d’une installation existante, installer aussi ce fichier Compose et le script de galerie sur le serveur, exécuter le script de galerie puis recréer le conteneur applicatif.
+
+Les miniatures sont servies par l’API du carnet après authentification. Avant la première capture ou si une image ne se charge pas, la fiche affiche « Miniature à venir » et conserve le lien vers le site. Un aperçu est une capture enregistrée, pas un indicateur de disponibilité en temps réel. En l’absence d’affectation de galerie, le carnet reste utilisable avec le lien renseigné dans la fiche.
+
+
+## Progression publique et bilan formatif
+
+Le [référentiel M2 IHME STAPS](grille-progression-m2-staps.md) décrit les six jalons, le barème facultatif et une proposition de déroulement pour les deux dernières heures du module. Les attentes sont également disponibles dans le carnet et dans les pages publiques de progression.
+
+Lancer la migration additive avant de démarrer la nouvelle image. Les anciennes observations restent privées et les statuts enseignants déjà renseignés sont conservés. Les nouvelles analyses sont enregistrées séparément des validations, des notes et des revues.
+
+Installer `deploy/platform/gallery.py` et `deploy/platform/update-gallery.py` dans `/opt/ihme-platform/`, puis régénérer la configuration Caddy avec l’outil de galerie et les affectations existantes. Ajouter la route statique `/progression/*` avant les routes étudiantes ; vérifier la configuration avant de recharger Caddy. La génération exporte uniquement les statuts, les retours publics, les acquis et prochaines étapes des revues publiées, et les évaluations explicitement publiées. Les erreurs Git brutes, commentaires privés, blocages et aides ne sont pas exportés.
+
+Après déploiement, lancer `docker exec ihme-suivi-app-1 node server/sync-git.js`, puis `python3 /opt/ihme-platform/update-gallery.py`. Le timer de synchronisation existant renouvelle ensuite les bilans toutes les quatre heures. Les boutons d’analyse dans le carnet renouvellent les bilans en base ; les pages statiques ne changent qu’au prochain export (ou en lançant manuellement le script de galerie). La galerie n’offre aucune route publique d’écriture.
+
+L’analyse utilise seulement les API officielles GitHub et GitLab, en lecture, sur un commit précis. Elle refuse les redirections, limite les tailles et délais de lecture et n’exécute aucun script du dépôt étudiant. Un échantillon de deux fichiers par famille de vérifications est lu ; les structures atypiques doivent être examinées par l’enseignant. La compréhension orale et le fonctionnement réel ne sont pas notés automatiquement.
+
+Références techniques : [GitHub, arborescences Git](https://docs.github.com/en/rest/git/trees), [GitLab, arborescence du dépôt](https://docs.gitlab.com/api/repositories/), [GitLab, lecture des fichiers](https://docs.gitlab.com/api/repository_files/).

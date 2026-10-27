@@ -1,3 +1,4 @@
+import { ASSESSMENT_GUIDE } from "./rubric.js";
 import { repositoryAddress } from "./git.js";
 export const MILESTONES = [
   "Cadrage du besoin",
@@ -7,13 +8,11 @@ export const MILESTONES = [
   "Intégration et tests",
   "Déploiement et documentation",
 ];
-export const CRITERIA = [
-  { key: "functionality", title: "Fonctionnement", max: 6 },
-  { key: "design", title: "Conception", max: 4 },
-  { key: "quality", title: "Qualité du code", max: 3 },
-  { key: "progression", title: "Progression", max: 3 },
-  { key: "explanation", title: "Compréhension et explication", max: 4 },
-];
+export const CRITERIA = ASSESSMENT_GUIDE.map(({ key, title, max }) => ({
+  key,
+  title,
+  max,
+}));
 import { InputError } from "./errors.js";
 export { InputError } from "./errors.js";
 export function text(value, label, { required = false, max = 3000 } = {}) {

@@ -99,7 +99,7 @@ Les tests locaux couvrent les validations du déploiement, le refus des jetons d
 
 ## Petits graphiques d’activité Git
 
-Le carnet affiche 14 jours de commits par date, en heure de Paris. Le bouton d’actualisation recalcule aussi ces graphiques. `ihme-git-sync.timer` effectue une lecture des dépôts toutes les quatre heures ; `ihme-gallery.timer` republie les nombres agrégés dans la galerie toutes les cinq minutes, sans relire les forges. Les observations restent protégées. Les dépôts inaccessibles sont signalés ; un relevé ancien reste identifié comme tel.
+Le carnet affiche 14 jours de commits par date, en heure de Paris. Le bouton d’actualisation recalcule aussi ces graphiques. `ihme-git-sync.timer` effectue une lecture des dépôts toutes les quatre heures ; `ihme-gallery.timer` republie les nombres agrégés dans la galerie toutes les cinq minutes, sans relire les forges. Les observations privées restent protégées ; les retours publics et les revues/évaluations explicitement publiées apparaissent dans le menu Progression de chaque projet. Les dépôts inaccessibles sont signalés ; un relevé ancien reste identifié comme tel.
 
 `/etc/ihme-gallery/projects.json` contient la correspondance privée entre identifiants, titres, chemins et URLs des dépôts. `update-gallery.py` exporte les noms autorisés, les comptes journaliers et les états publics des déploiements. Le répertoire `/opt/ihme-platform/public` est monté dans le proxy et ne contient que les pages publiques générées et leurs miniatures ; ne pas y placer la configuration ou les secrets. La pagination est plafonnée à 1 000 commits par dépôt : les relevés incomplets sont indiqués explicitement.
 

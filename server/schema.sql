@@ -54,3 +54,27 @@ CREATE TABLE IF NOT EXISTS git_snapshots (
 );
 
 ALTER TABLE git_snapshots ADD COLUMN IF NOT EXISTS daily_activity JSONB;
+
+ALTER TABLE milestones ADD COLUMN IF NOT EXISTS manual_override BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE milestones ADD COLUMN IF NOT EXISTS public_note TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS migration_markers (name TEXT PRIMARY KEY);
+UPDATE milestones SET manual_override=true WHERE (status<>'todo' OR evidence<>'' OR due_date IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM migration_markers WHERE name='progress-overrides-v1');
+INSERT INTO migration_markers(name) VALUES('progress-overrides-v1') ON CONFLICT DO NOTHING;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS public_visible BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE assessments ADD COLUMN IF NOT EXISTS public_visible BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS progress_reports (
+  project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+  analysis JSONB,
+  error TEXT NOT NULL DEFAULT '',
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS progress_history (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  sha TEXT NOT NULL,
+  version TEXT NOT NULL,
+  observed INTEGER NOT NULL,
+  repository TEXT NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY(project_id,sha,version,repository)
+);

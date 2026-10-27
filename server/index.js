@@ -12,6 +12,7 @@ const app = createApp(db, {
   origin: process.env.PUBLIC_ORIGIN,
   secure,
   version: process.env.APP_VERSION,
+  studentOrigin: process.env.STUDENT_ORIGIN,
   githubToken: process.env.GITHUB_TOKEN,
   gitlabToken: process.env.GITLAB_TOKEN,
 });

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import CommitChart from "./CommitChart.jsx";
+import SitePreview from "./SitePreview.jsx";
+import ProgressPanel from "./ProgressPanel.jsx";
 async function api(url, method = "GET", body) {
   const r = await fetch("/api" + url, {
     method,
@@ -68,7 +70,8 @@ function App() {
     [filter, setFilter] = useState("all"),
     [meta, setMeta] = useState({ criteria: [] }),
     [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [analysisJob, setAnalysisJob] = useState({ running: false });
   async function run(fn) {
     setError("");
     setNotice("");
@@ -102,6 +105,33 @@ function App() {
       })
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    if (!auth) return;
+    let cancelled = false;
+    async function poll() {
+      try {
+        const state = await api("/progression-job");
+        if (cancelled) return;
+        setAnalysisJob(state);
+        if (analysisJob.running && !state.running) {
+          await load();
+          if (!cancelled)
+            setNotice(
+              state.error ||
+                `Bilan terminé : ${state.result?.success || 0} analyses, ${state.result?.skipped || 0} inchangées, ${state.result?.failed || 0} à vérifier. La galerie sera actualisée au prochain export.`,
+            );
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      }
+    }
+    poll();
+    const timer = analysisJob.running ? setInterval(poll, 2500) : null;
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [auth, analysisJob.running]);
   async function save(url, method, v) {
     const p = await api(url, method, v);
     setProjects((ps) =>
@@ -216,6 +246,24 @@ function App() {
               <div className="actions">
                 <button
                   className="secondary"
+                  disabled={busy || analysisJob.running}
+                  onClick={() =>
+                    run(async () => {
+                      setAnalysisJob(
+                        await api("/projects/analyze", "POST", {}),
+                      );
+                      setNotice(
+                        "Analyse de la promotion lancée. Vous pouvez continuer à modifier les fiches.",
+                      );
+                    })
+                  }
+                >
+                  {analysisJob.running
+                    ? "Analyse de la promotion…"
+                    : "Analyser la progression"}
+                </button>
+                <button
+                  className="secondary"
                   disabled={busy}
                   onClick={() =>
                     run(async () => {
@@ -284,7 +332,13 @@ function App() {
               {projects
                 .filter(
                   (p) =>
-                    (p.student_name + " " + p.title)
+                    (
+                      p.student_name +
+                      " " +
+                      p.title +
+                      " " +
+                      (p.site?.label || "")
+                    )
                       .toLowerCase()
                       .includes(query.toLowerCase()) &&
                     (filter === "all" ||
@@ -295,16 +349,21 @@ function App() {
                         ))),
                 )
                 .map((p) => (
-                  <button
-                    className="card"
-                    key={p.id}
-                    onClick={() => setSelected(p)}
-                  >
-                    <span className="eyebrow">{p.student_name}</span>
+                  <article className="card" key={p.id}>
+                    <div className="student-heading">
+                      <span className="eyebrow">{p.student_name}</span>
+                      {p.site && (
+                        <span className="project-number">{p.site.label}</span>
+                      )}
+                    </div>
                     <h2>{p.title}</h2>
                     {p.objective && (
                       <p className="card-objective">{p.objective}</p>
                     )}
+                    <SitePreview
+                      key={p.site?.thumbnail || p.deployed_url}
+                      p={p}
+                    />
                     <div className="git-summary">
                       {p.git ? (
                         <>
@@ -333,14 +392,20 @@ function App() {
                     </div>
                     <div className="between">
                       <span>{p.progress}% des jalons validés</span>
-                      <b>Ouvrir ↗</b>
+                      <button
+                        className="ghost"
+                        onClick={() => setSelected(p)}
+                        aria-label={`Ouvrir la fiche de ${p.student_name}`}
+                      >
+                        Ouvrir la fiche ↗
+                      </button>
                     </div>
                     <div className="tags">
                       {p.alerts.map((a) => (
                         <span key={a.kind}>{a.label}</span>
                       ))}
                     </div>
-                  </button>
+                  </article>
                 ))}
             </div>
             {!projects.length && (
@@ -398,14 +463,17 @@ function ProjectForm({ p = {}, onSave, busy }) {
   );
 }
 function Detail({ p, meta, busy, back, save }) {
-  const [tab, setTab] = useState("activity");
+  const [tab, setTab] = useState("progression");
   const [chosen, setChosen] = useState("");
   return (
     <>
       <button className="ghost" onClick={back}>
         ← Toute la promotion
       </button>
-      <p className="eyebrow">{p.student_name}</p>
+      <div className="student-heading">
+        <p className="eyebrow">{p.student_name}</p>
+        {p.site && <span className="project-number">{p.site.label}</span>}
+      </div>
       <h1>{p.title}</h1>
       <p>{p.objective}</p>
       <div className="links">
@@ -414,14 +482,22 @@ function Detail({ p, meta, busy, back, save }) {
             Dépôt source ↗
           </a>
         )}
-        {p.deployed_url && (
-          <a href={p.deployed_url} target="_blank" rel="noreferrer">
+        {(p.site?.url || p.deployed_url) && (
+          <a
+            href={p.site?.url || p.deployed_url}
+            target="_blank"
+            rel="noreferrer"
+          >
             Application ↗
           </a>
         )}
       </div>
+      <div className="detail-site">
+        <SitePreview p={p} />
+      </div>
       <div className="tabs" role="tablist" aria-label="Contenu de la fiche">
         {[
+          ["progression", "Bilan et conseils"],
           ["activity", "Activité Git"],
           ["milestones", "Jalons"],
           ["reviews", "Journal des revues"],
@@ -438,6 +514,13 @@ function Detail({ p, meta, busy, back, save }) {
           </button>
         ))}
       </div>
+      {tab === "progression" && (
+        <ProgressPanel
+          p={p}
+          busy={busy}
+          analyze={() => save(`/projects/${p.id}/analyze`, "POST", {})}
+        />
+      )}
       {tab === "activity" && (
         <GitActivity
           p={p}
@@ -480,6 +563,21 @@ function Detail({ p, meta, busy, back, save }) {
             {p.reviews.length === 0 && <p>La première revue reste à écrire.</p>}
             {p.reviews.map((r) => (
               <article className="panel review" key={r.id}>
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    save(
+                      `/projects/${p.id}/reviews/${r.id}/publication`,
+                      "PUT",
+                      { public_visible: !r.public_visible },
+                    )
+                  }
+                >
+                  {r.public_visible
+                    ? "Retirer cette revue de la galerie"
+                    : "Publier acquis et prochaine étape"}
+                </button>
                 <p className="eyebrow">
                   {r.reviewed_on} · Commit <code>{r.commit_ref}</code>
                 </p>
@@ -507,6 +605,7 @@ function Detail({ p, meta, busy, back, save }) {
           key={JSON.stringify(p.assessment)}
           a={p.assessment || {}}
           criteria={meta.criteria}
+          guide={meta.assessmentGuide}
           busy={busy}
           onSave={(v) => save(`/projects/${p.id}/assessment`, "PUT", v)}
         />
@@ -531,7 +630,9 @@ function Milestone({ m, onSave, busy }) {
         Statut
         <select
           value={v.status}
-          onChange={(e) => setV({ ...v, status: e.target.value })}
+          onChange={(e) =>
+            setV({ ...v, status: e.target.value, manual_override: true })
+          }
         >
           {Object.entries(labels).map(([k, t]) => (
             <option key={k} value={k}>
@@ -540,6 +641,20 @@ function Milestone({ m, onSave, busy }) {
           ))}
         </select>
       </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!v.manual_override}
+          onChange={(e) => setV({ ...v, manual_override: !e.target.checked })}
+        />
+        Utiliser la proposition automatique (elle ne valide jamais le jalon)
+      </label>
+      <Field
+        label="Retour public dans la galerie"
+        type="textarea"
+        value={v.public_note}
+        onChange={(e) => setV({ ...v, public_note: e.target.value })}
+      />
       <Field
         label="Échéance"
         type="date"
@@ -566,6 +681,7 @@ function ReviewForm({ onSave, busy, initialCommit }) {
     blocker: "",
     next_step: "",
     assistance: "",
+    public_visible: false,
   });
   const [v, setV] = useState(blank);
   return (
@@ -596,6 +712,15 @@ function ReviewForm({ onSave, busy, initialCommit }) {
           onChange={(e) => setV({ ...v, [k]: e.target.value })}
         />
       ))}
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={v.public_visible}
+          onChange={(e) => setV({ ...v, public_visible: e.target.checked })}
+        />{" "}
+        Publier les acquis et la prochaine étape dans la galerie (les champs
+        blocage et aide restent privés)
+      </label>
       <button disabled={busy}>Ajouter au journal</button>
       <p className="muted">
         Les revues sont conservées pour retracer la progression. Une nouvelle
@@ -681,7 +806,7 @@ function GitActivity({ p, choose }) {
     </section>
   );
 }
-function Assessment({ a, criteria, onSave, busy }) {
+function Assessment({ a, criteria, guide = [], onSave, busy }) {
   const [v, setV] = useState(a);
   const complete = criteria.every(
     (c) => v[c.key] !== "" && v[c.key] !== undefined && v[c.key] !== null,
@@ -699,6 +824,21 @@ function Assessment({ a, criteria, onSave, busy }) {
       <p>
         Les critères peuvent rester vides. Le total est affiché une fois la
         grille complète.
+      </p>
+      <div className="rubric-guide">
+        {guide.map((c) => (
+          <details key={c.key}>
+            <summary>
+              {c.title} / {c.max}
+            </summary>
+            <p>{c.anchors}</p>
+          </details>
+        ))}
+      </div>
+      <p className="muted">
+        Appréciation enseignante après démonstration. Une compétence non
+        observée reste à vérifier ; aucune note automatique n’est déduite des
+        fichiers ou des commits.
       </p>
       {criteria.map((c) => (
         <Field
@@ -728,6 +868,15 @@ function Assessment({ a, criteria, onSave, busy }) {
           ? criteria.reduce((n, c) => n + Number(v[c.key]), 0) + " / 20"
           : "Grille incomplète"}
       </p>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!!v.public_visible}
+          onChange={(e) => setV({ ...v, public_visible: e.target.checked })}
+        />{" "}
+        Publier ces résultats et cette appréciation dans la galerie, visibles
+        par tous
+      </label>
       <button disabled={busy}>Enregistrer l’évaluation</button>
     </form>
   );

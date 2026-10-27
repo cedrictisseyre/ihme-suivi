@@ -4,7 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 
-let vite, CommitChart;
+let vite, CommitChart, SitePreview;
 before(async () => {
   vite = await createServer({
     server: { middlewareMode: true, hmr: false, watch: null },
@@ -12,6 +12,7 @@ before(async () => {
     logLevel: "silent",
   });
   ({ default: CommitChart } = await vite.ssrLoadModule("/src/CommitChart.jsx"));
+  ({ default: SitePreview } = await vite.ssrLoadModule("/src/SitePreview.jsx"));
 });
 after(async () => {
   await vite?.close();
@@ -36,4 +37,29 @@ test("la fiche reste affichable avant la première lecture Git", () => {
     React.createElement(CommitChart, { activity: null }),
   );
   assert.match(html, /données à actualiser/);
+});
+
+test("aperçu étudiant : lien accessible et état sans miniature", () => {
+  const p = {
+    student_name: "Étudiant",
+    site: {
+      url: "https://example.org/site/",
+      thumbnail: "/api/project-previews/image.jpg",
+    },
+  };
+  const html = renderToStaticMarkup(React.createElement(SitePreview, { p }));
+  assert.match(html, /Aperçu du site de Étudiant/);
+  assert.match(html, /href="https:\/\/example.org\/site\/"/);
+  assert.match(html, /loading="lazy"/);
+  const pending = renderToStaticMarkup(
+    React.createElement(SitePreview, {
+      p: { ...p, site: { url: p.site.url } },
+    }),
+  );
+  assert.match(pending, /Miniature à venir/);
+  assert.match(pending, /Voir le site/);
+  const missing = renderToStaticMarkup(
+    React.createElement(SitePreview, { p: {} }),
+  );
+  assert.match(missing, /Site à renseigner/);
 });

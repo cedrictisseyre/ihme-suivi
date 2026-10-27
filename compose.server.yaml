@@ -20,6 +20,9 @@ services:
   app:
     <<: *app
     restart: unless-stopped
+    volumes:
+      - /opt/ihme-platform/teacher-sites:/run/ihme-gallery:ro
+      - /opt/ihme-platform/public:/run/ihme-gallery/public:ro
     networks:
       database: {}
       web:

@@ -86,6 +86,44 @@ class Gallery(unittest.TestCase):
         self.assertIn("Aperçu en préparation", result)
         self.assertNotIn("<img", module.render_gallery(self.rows))
 
+    def test_public_progress_menu_and_safe_read_only_page(self):
+        report = {
+            "generated_at": "2026-10-27T12:00:00Z",
+            "sha": "a" * 40,
+            "stale": True,
+            "milestones": [{
+                "position": 1, "title": "Cadrage", "status": "done", "teacher": True,
+                "expected": "Un scénario STAPS", "demonstration": "Expliquer",
+                "public_note": "<script>alert(1)</script>",
+                "evidence": "OBSERVATION_PRIVEE", "next": "Tester",
+            }],
+            "criteria": [{"key": "functionality", "title": "Fonctionnement", "max": 6, "anchors": "Repères"}],
+            "assessment": {"scores": [{"key": "functionality", "value": 0}], "comment": "À poursuivre"},
+            "reviews": [{"date": "2026-10-27", "achievements": "Calcul expliqué", "next_step": "Vérifier le cas vide", "assistance": "AIDE_PRIVEE"}],
+            "history": [{"sha": "a" * 40, "observed": 0, "generated_at": "2026-10-27T12:00:00Z"}],
+            "token": "JETON_PRIVE",
+        }
+        gallery = module.render_gallery(self.rows, progression={"p01": report})
+        self.assertIn('href="/progression/p01/"', gallery)
+        self.assertIn("1/6 jalons validés", gallery)
+        self.assertIn("Menu du projet P1", gallery)
+        page = module.render_progress(self.rows[0], report)
+        for value in ["OBSERVATION_PRIVEE", "AIDE_PRIVEE", "JETON_PRIVE", "ADRESSE_PRIVEE", "DEPOT_PRIVE"]:
+            self.assertNotIn(value, page)
+        self.assertNotIn("<script>alert(1)</script>", page)
+        self.assertIn("&lt;script&gt;", page)
+        self.assertIn("Calcul expliqué", page)
+        self.assertIn("Vérifier le cas vide", page)
+        self.assertIn("0/6", page)
+        self.assertIn("13:00", page)
+        self.assertNotIn("<form", page)
+        caddy = module.render_caddy("suivi.example.fr", "projets.example.fr", self.rows)
+        self.assertIn("handle /progression/*", caddy)
+        self.assertIn("Bilan à préparer", module.render_progress(self.rows[0]))
+        self.rows[0]["slug"] = "progression"
+        with self.assertRaises(ValueError):
+            module.checked_rows(self.rows)
+
     def test_path_cannot_inject_caddy_configuration(self):
         self.rows[0]["slug"] = "x/../__deploy"
         with self.assertRaises(ValueError):

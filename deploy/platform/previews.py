@@ -21,6 +21,7 @@ def refresh():
         states = deployments(projects)
         output = root / "public/previews"
         output.mkdir(parents=True, exist_ok=True, mode=0o755)
+        output.chmod(0o755)
         targets = []
         for project in projects:
             state = states.get(project["id"], {})

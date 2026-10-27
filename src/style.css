@@ -498,3 +498,106 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.student-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.project-number {
+  background: #eaf0e4;
+  color: #235d4c;
+  border: 1px solid #dce3db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.site-preview {
+  margin: 8px 0 12px;
+}
+.site-preview-link {
+  display: block;
+  text-decoration: none;
+}
+.site-preview img,
+.site-preview-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  height: auto;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid #dce3db;
+  border-radius: 8px;
+  background: #edf1e8;
+}
+.site-preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60716a;
+  font-size: 13px;
+}
+.site-preview-caption {
+  display: block;
+  margin-top: 8px;
+  font-weight: 650;
+  font-size: 13px;
+}
+.site-preview small {
+  display: block;
+  color: #60716a;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.site-address {
+  overflow-wrap: anywhere;
+}
+.detail-site {
+  max-width: 440px;
+  margin-top: 16px;
+}
+.card .between button {
+  font-size: 11px;
+  padding: 6px;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 16px 0;
+}
+.check input {
+  width: auto;
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+.rubric-item {
+  border-top: 1px solid #dce3db;
+  margin-top: 18px;
+  padding-top: 10px;
+}
+.rubric-guide details {
+  padding: 12px 0;
+  border-bottom: 1px solid #dce3db;
+}
+.rubric-guide summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.progression-panel .titlebar {
+  gap: 16px;
+}
+
+.public-progress-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
