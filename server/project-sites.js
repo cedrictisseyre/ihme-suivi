@@ -34,9 +34,7 @@ export async function projectSite(project, config) {
   }
   let thumbnail = null;
   try {
-    const files = await readdir(
-      config.previewsPath || "/run/ihme-gallery/public/previews",
-    );
+    const files = await readdir(config.previewsPath || "/run/ihme-previews");
     const candidates = files.filter((name) =>
       new RegExp(`^${assignment.id}-[a-f0-9]{64}\\.jpg$`).test(name),
     );
@@ -45,10 +43,7 @@ export async function projectSite(project, config) {
         name,
         modified: (
           await stat(
-            path.join(
-              config.previewsPath || "/run/ihme-gallery/public/previews",
-              name,
-            ),
+            path.join(config.previewsPath || "/run/ihme-previews", name),
           )
         ).mtimeMs,
       })),

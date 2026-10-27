@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/ihme-platform/teacher-sites:/run/ihme-gallery:ro
-      - /opt/ihme-platform/public:/run/ihme-gallery/public:ro
+      - /opt/ihme-platform/public/previews:/run/ihme-previews:ro
     networks:
       database: {}
       web:

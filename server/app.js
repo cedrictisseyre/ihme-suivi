@@ -119,9 +119,7 @@ export function createApp(db, config) {
     res.sendFile(
       req.params.filename,
       {
-        root: path.resolve(
-          config.previewsPath || "/run/ihme-gallery/public/previews",
-        ),
+        root: path.resolve(config.previewsPath || "/run/ihme-previews"),
         dotfiles: "deny",
       },
       (error) => {
