@@ -71,6 +71,34 @@ Dans **Settings → Secrets and variables → Actions** de votre propre dépôt 
 | **Variables** | `IHME_DEPLOY_URL` | Votre URL complète de déploiement, terminée par `/__deploy/pNN` |
 | **Variables** | `IHME_BASE_PATH` | Votre chemin web, par exemple `/mon-projet/` |
 
+#### Ajouter le secret de déploiement
+
+1. Ouvrir l’onglet **Secrets**.
+2. Descendre jusqu’à **Repository secrets**, puis cliquer sur **New repository secret**. Utiliser les secrets du dépôt ; aucun environnement GitHub n’est nécessaire pour le workflow fourni.
+3. Dans **Name**, saisir exactement `IHME_DEPLOY_TOKEN`.
+4. Dans **Secret**, coller uniquement la valeur du jeton personnel remis par l’enseignant, sans guillemets ni espaces ajoutés.
+5. Cliquer sur **Add secret**.
+
+Le champ **Name** contient le nom fixe `IHME_DEPLOY_TOKEN`. Le champ **Secret** contient votre jeton privé. Ne pas coller le jeton dans **Name**, ni saisir une ligne complète comme `IHME_DEPLOY_TOKEN=…` dans l’un des champs.
+
+#### Ajouter les deux variables
+
+1. Revenir dans **Settings → Secrets and variables → Actions**, puis ouvrir l’onglet **Variables**.
+2. Cliquer sur **New repository variable**.
+3. Dans **Name**, saisir exactement `IHME_DEPLOY_URL`. Dans **Value**, coller l’URL de déploiement personnelle fournie, terminée par `/__deploy/pNN` avec votre numéro de projet. Cliquer sur **Add variable**.
+4. Cliquer à nouveau sur **New repository variable**.
+5. Dans **Name**, saisir exactement `IHME_BASE_PATH`. Dans **Value**, saisir le chemin web attribué, par exemple `/mon-projet/`, avec les barres obliques initiale et finale. Cliquer sur **Add variable**.
+
+Vérifier que vous avez **un secret dans Secrets et deux variables dans Variables**, avec les trois noms exacts du tableau. Le workflow fourni lit l’URL et le chemin dans les variables : les créer uniquement dans **Secrets** ne suffit pas. Le `GITHUB_TOKEN` est fourni automatiquement par GitHub ; ne pas le créer manuellement.
+
+#### Erreur « Secret names can only contain alphanumeric characters… »
+
+Ce message concerne le champ **Name**, pas la valeur du jeton. Un nom de secret accepte uniquement des lettres, des chiffres et des underscores `_`, sans espaces, tirets, accents, signes `=` ni barres obliques. Il ne doit pas commencer par un chiffre ni par le préfixe réservé `GITHUB_`.
+
+Effacer le contenu du champ **Name** et saisir `IHME_DEPLOY_TOKEN`, sans guillemets ni espace avant ou après. Coller le jeton dans le champ **Secret**, puis cliquer sur **Add secret**. Les règles de nommage ne demandent pas de modifier les caractères de votre jeton.
+
+Ne jamais partager la valeur du secret dans une capture d’écran. Pour demander de l’aide, montrer uniquement les noms des paramètres et le message d’erreur.
+
 Les valeurs réelles figurent dans votre dossier d’accès privé. Ne copiez pas les valeurs d’un autre projet. Le dépôt d’image déduit de `ghcr.io/PROPRIETAIRE/DEPOT` doit correspondre au dépôt autorisé par l’enseignant ; demander une mise à jour si vous renommez votre dépôt.
 
 Une image GHCR est initialement privée. Le workflow transmet son jeton GitHub temporaire au serveur uniquement pendant le téléchargement, sans le conserver. Ce jeton expire à la fin du job. Vous n’avez donc pas besoin de rendre votre image publique pour utiliser ce parcours. Gardez vos fichiers secrets hors du contexte Docker grâce à `.dockerignore`.
@@ -122,3 +150,5 @@ Le modèle GitHub Actions ne s’exécute pas sur GitLab. Un projet GitLab néce
 
 - [GitHub : publier des images Docker](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
 - [GitHub : accès et visibilité des packages](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
+- [GitHub : ajouter un secret de dépôt](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
+- [GitHub : règles de nommage des secrets](https://docs.github.com/en/actions/reference/security/secrets)
