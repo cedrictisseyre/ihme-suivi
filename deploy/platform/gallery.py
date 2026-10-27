@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère uniquement la galerie publique ; ignore noms, mails, dépôts et jetons privés."""
+"""Galerie publique : noms explicitement autorisés, projets et aperçus ; aucun secret ni observation."""
 
 import argparse
 import html
@@ -18,6 +18,7 @@ STYLE = (
     + DARK_PALETTE
     + "}}"
 )
+STYLE += ".student-name{font-size:13px;font-weight:650;color:var(--text)}.deployment-status{font-size:11px;color:var(--accent)}.project-preview{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:top;border:1px solid var(--border);border-radius:8px;background:var(--subtle)}.preview-pending{display:flex;align-items:center;justify-content:center;aspect-ratio:16/10;border-radius:8px;background:var(--subtle);color:var(--muted);font-size:12px}"
 STYLE += """*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}header{padding:20px 6vw;background:var(--surface);border-bottom:1px solid var(--border);font-weight:750;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.brand{font-size:15px}.theme-toggle{display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:9px 13px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.theme-toggle[hidden]{display:none}.theme-toggle:hover{background:var(--subtle)}.theme-toggle:focus-visible{outline:3px solid var(--focus);outline-offset:3px}.theme-icon{font-size:18px;line-height:1}main{max-width:1150px;margin:auto;padding:48px 6vw}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-1px;margin:12px 0}p{line-height:1.6;color:var(--muted)}.intro{max-width:700px}.eyebrow{font-size:12px;letter-spacing:1.5px;color:var(--eyebrow)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:32px 0}.card{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;color:var(--text);text-decoration:none}.card:hover{border-color:var(--hover)}.card:focus-visible{outline:3px solid var(--focus);outline-offset:3px}.card h2{font-size:18px;line-height:1.3;margin:0;flex:1}.card small{color:var(--muted)}.arrow{color:var(--accent);font-size:13px;font-weight:650}footer{padding:24px 6vw;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}.notice{padding:18px 22px;border-radius:10px;background:var(--subtle)}.back{display:inline-block;padding:12px 18px;background:var(--button-bg);color:var(--button-text);text-decoration:none;border-radius:8px}.commit-chart{display:block;margin:8px 0}.commit-chart svg{display:block;width:100%;height:45px;margin:5px 0}.chart-caption{display:flex;justify-content:space-between;font-size:11px;color:var(--caption)}.chart-axis,.chart-empty{font-size:10px;color:var(--muted)}.chart-empty{display:block;margin:10px 0}.chart-bar{fill:var(--chart-bar)}.chart-zero{fill:var(--chart-zero)}"""
 
 THEME_INIT = """(function(){
@@ -164,7 +165,28 @@ def render_chart(activity):
     )
 
 
-def render_gallery(rows, activity=None):
+def render_preview(project, deployment):
+    if not deployment or not deployment.get("published"):
+        return '<span class="deployment-status">À déployer</span>'
+    status = (
+        "En ligne" if deployment.get("available") else "Déjà déployé · indisponible"
+    )
+    image = deployment.get("thumbnail", "")
+    if re.fullmatch(r"/previews/" + project["id"] + r"-[a-f0-9]{64}\.jpg", image):
+        preview = (
+            '<img class="project-preview" src="'
+            + image
+            + '" alt="Aperçu de '
+            + html.escape(project["title"], quote=True)
+            + '" width="1280" height="800" loading="lazy" decoding="async">'
+        )
+    else:
+        preview = '<span class="preview-pending">Aperçu en préparation</span>'
+    return '<span class="deployment-status">' + status + "</span>" + preview
+
+
+def render_gallery(rows, activity=None, deployments=None):
+    deployments = deployments or {}
     activity = activity or {}
     checked_rows(rows)
     cards = "".join(
@@ -172,9 +194,12 @@ def render_gallery(rows, activity=None):
         + r["slug"]
         + '/"><small>'
         + html.escape(r["id"].upper())
-        + "</small><h2>"
+        + '</small><span class="student-name">'
+        + html.escape(r.get("student_name", ""))
+        + "</span><h2>"
         + html.escape(r["title"])
         + "</h2>"
+        + render_preview(r, deployments.get(r["id"]))
         + render_chart(activity.get(r["id"]))
         + '<span class="arrow">Accéder au projet ↗</span></a>'
         for r in rows
@@ -189,6 +214,13 @@ def render_gallery(rows, activity=None):
     )
 
 
+def render_pending():
+    return page(
+        "IHME — Application en attente",
+        '<p class="eyebrow">ESPACE PROJET</p><h1>Cette application n’est pas encore disponible.</h1><p>Son espace est préparé. Il attend son premier déploiement ou une remise en ligne par son auteur.</p><a class="back" href="/">← Revenir aux projets</a>',
+    )
+
+
 def render_caddy(teacher_host, student_host, rows):
     checked_rows(rows)
     for host in [teacher_host, student_host]:
@@ -196,10 +228,6 @@ def render_caddy(teacher_host, student_host, rows):
             raise ValueError("Nom d’hôte invalide.")
     if teacher_host == student_host:
         raise ValueError("Le carnet enseignant doit avoir une origine distincte.")
-    pending = page(
-        "IHME — Application en attente",
-        '<p class="eyebrow">ESPACE PROJET</p><h1>Cette application n’est pas encore disponible.</h1><p>Son espace est préparé. Il attend son premier déploiement ou une remise en ligne par son auteur.</p><a class="back" href="/">← Revenir aux projets</a>',
-    )
     routes = "".join(
         "    redir /"
         + r["slug"]
@@ -226,6 +254,11 @@ def render_caddy(teacher_host, student_host, rows):
         + student_host
         + """ {
     encode zstd gzip
+    handle /previews/* {
+        root * /srv/gallery
+        header X-Content-Type-Options nosniff
+        file_server
+    }
     handle /__deploy/* {
         request_body {
             max_size 4KB
@@ -240,10 +273,11 @@ def render_caddy(teacher_host, student_host, rows):
         file_server
     }
     handle_errors {
-        header Content-Type "text/html; charset=utf-8"
-        respond `"""
-        + pending
-        + """` 503
+        root * /srv/gallery
+        rewrite * /_unavailable.html
+        file_server {
+            status 503
+        }
     }
 }
 """
@@ -257,6 +291,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     rows = json.loads(Path(args.assignments).read_text())
     Path(args.gallery).write_text(render_gallery(rows))
+    (Path(args.gallery).parent / "_unavailable.html").write_text(render_pending())
     Path(args.caddy).write_text(
         render_caddy(args.teacher_host, args.student_host, rows)
     )

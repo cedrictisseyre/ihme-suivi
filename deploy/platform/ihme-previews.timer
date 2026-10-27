@@ -1,0 +1,7 @@
+[Unit]
+Description=Detection des nouveaux deploiements pour les miniatures IHME
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target

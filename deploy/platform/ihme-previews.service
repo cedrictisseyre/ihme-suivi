@@ -1,0 +1,9 @@
+[Unit]
+Description=Miniatures publiques des applications etudiantes IHME
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/ihme-platform/previews.py
+ExecStartPost=/usr/bin/python3 /opt/ihme-platform/update-gallery.py
+TimeoutStartSec=660
+Nice=10

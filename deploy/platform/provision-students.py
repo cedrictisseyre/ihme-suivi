@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os, json, hashlib, secrets, subprocess, shutil, argparse, re
-from gallery import checked_rows, render_caddy, render_gallery
+from gallery import checked_rows, render_caddy, render_gallery, render_pending
 from pathlib import Path
 
 os.umask(0o077)
@@ -187,6 +187,8 @@ run(
 public = installed / "public"
 public.mkdir(mode=0o755, exist_ok=True)
 (public / "index.html").write_text(render_gallery(rows))
+(public / "_unavailable.html").write_text(render_pending())
+os.chmod(public / "_unavailable.html", 0o644)
 os.chmod(public / "index.html", 0o644)
 gallery_config = Path("/etc/ihme-gallery")
 gallery_config.mkdir(mode=0o700, exist_ok=True)

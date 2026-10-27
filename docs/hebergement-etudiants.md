@@ -2,7 +2,7 @@
 
 Le carnet enseignant et les applications étudiantes utilisent le même Docker Engine, PostgreSQL partagé et un proxy HTTPS. Le carnet conserve une origine distincte des démonstrations étudiantes : des chemins différents sur un même hôte ne suffisent pas à protéger ses observations des scripts étudiants.
 
-La galerie publique contient uniquement les titres et chemins des projets. Une page « application en attente » apparaît tant qu’un projet n’a pas été publié ou si son serveur est arrêté. Préparer les espaces ne publie pas automatiquement le code des dépôts étudiants.
+La galerie publique affiche les numéros P01–P20, les noms étudiants autorisés, les titres et chemins des projets, ainsi que les miniatures des applications déjà déployées. Une page « application en attente » apparaît tant qu’un projet n’a pas été publié ou si son serveur est arrêté. Préparer les espaces ne publie pas automatiquement le code des dépôts étudiants.
 
 ## Accès étudiant par HTTPS
 
@@ -95,10 +95,24 @@ npm test
 python3 -m unittest discover -s tests -p '*_test.py'
 ```
 
-Les tests locaux couvrent les validations du déploiement, le refus des jetons d’un autre projet, le refus d’options supplémentaires, la sérialisation des déploiements et l’absence de noms/jetons dans la galerie générée. Sur le serveur, tester un projet fictif sain puis non sain, le rollback, la révocation, les refus SQL entre projets et l’isolation du carnet avant de distribuer les accès. Les dossiers d’accès privés ne doivent pas être envoyés sans instruction explicite de l’enseignant.
+Les tests locaux couvrent les validations du déploiement, le refus des jetons d’un autre projet, le refus d’options supplémentaires, la sérialisation des déploiements et l’affichage échappé des noms autorisés et l’absence de mails/jetons dans la galerie générée. Sur le serveur, tester un projet fictif sain puis non sain, le rollback, la révocation, les refus SQL entre projets et l’isolation du carnet avant de distribuer les accès. Les dossiers d’accès privés ne doivent pas être envoyés sans instruction explicite de l’enseignant.
 
 ## Petits graphiques d’activité Git
 
 Le carnet affiche 14 jours de commits par date, en heure de Paris. Le bouton d’actualisation recalcule aussi ces graphiques. `ihme-git-sync.timer` effectue une lecture des dépôts toutes les quatre heures ; `ihme-gallery.timer` republie les nombres agrégés dans la galerie toutes les cinq minutes, sans relire les forges. Les observations restent protégées. Les dépôts inaccessibles sont signalés ; un relevé ancien reste identifié comme tel.
 
-`/etc/ihme-gallery/projects.json` contient la correspondance privée entre identifiants, titres, chemins et URLs des dépôts. `update-gallery.py` exporte uniquement les comptes journaliers. Le répertoire `/opt/ihme-platform/public` est monté dans le proxy et ne contient que la page publique générée ; ne pas y placer la configuration ou les secrets. La pagination est plafonnée à 1 000 commits par dépôt : les relevés incomplets sont indiqués explicitement.
+`/etc/ihme-gallery/projects.json` contient la correspondance privée entre identifiants, titres, chemins et URLs des dépôts. `update-gallery.py` exporte les noms autorisés, les comptes journaliers et les états publics des déploiements. Le répertoire `/opt/ihme-platform/public` est monté dans le proxy et ne contient que les pages publiques générées et leurs miniatures ; ne pas y placer la configuration ou les secrets. La pagination est plafonnée à 1 000 commits par dépôt : les relevés incomplets sont indiqués explicitement.
+
+## Pages d’attente et miniatures
+
+La page `public/_unavailable.html` est générée avec le même thème jour/nuit que la galerie. Caddy la sert avec le statut 503 quand un projet est indisponible. Le thème choisi est partagé entre ces pages sur le même hôte. Le proxy ne conserve plus une copie ancienne de cette page dans son fichier de configuration.
+
+Les noms affichés viennent uniquement du champ `student_name` des fiches protégées. Le générateur exporte ce champ à la demande de l’enseignant ; il ne publie ni adresse mail, ni jeton, ni observation. Les véritables noms et images restent des données d’exploitation, hors du dépôt Git public.
+
+`ihme-previews.timer` détecte les déploiements réussis toutes les cinq minutes. Une miniature est créée pour chaque nouveau digest d’image, puis renouvelée au plus une fois par jour. Une application arrêtée peut conserver son dernier aperçu avec un statut indisponible ; une première publication sans capture affiche « Aperçu en préparation ».
+
+Le navigateur éphémère utilise Playwright 1.64.1 dans un conteneur non privilégié exécuté sous UID 1000, avec sandbox Chromium, système de fichiers en lecture seule, limites de 512 Mio et 0,5 CPU, sans accès aux réseaux SQL ni au socket Docker. Il reçoit seulement des identifiants de projet, chemins publics et digests. Les captures utilisent des contextes neufs sans session ni authentification, et visitent uniquement les chemins étudiants avec une courte liste de CDN pour les ressources statiques. Les écritures HTTP et les connexions WebSocket sont bloquées. Six pages maximum sont traitées par passage. Seuls les JPEG attendus, limités à 2 Mo, sont copiés depuis un répertoire temporaire vers `public/previews/`.
+
+Préparation administrative : construire `deploy/previews/Dockerfile` avec le tag `ihme-previews:1.64.1`, créer le réseau isolé `ihme-previews` (sous-réseau 172.28.255.0/28, après vérification d’absence de conflit), et installer le profil seccomp officiel de la même version dans `/opt/ihme-platform/preview-seccomp.json`. Définir `STUDENT_ORIGIN` dans le fichier privé `.env.platform`. Installer `deployments.py`, `previews.py`, les unités `ihme-previews.service` et `ihme-previews.timer`, puis lancer une première capture et vérifier les JPEG avant activation du timer. La seule capacité ajoutée au conteneur est SYS_CHROOT, nécessaire à la sandbox ; aucun SYS_ADMIN ni mode privilégié n’est accordé.
+
+Sources : [Docker et sandbox Playwright](https://playwright.dev/docs/docker), [profil seccomp officiel épinglé](https://github.com/microsoft/playwright/blob/v1.64.1/utils/docker/seccomp_profile.json).
