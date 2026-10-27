@@ -126,6 +126,28 @@ class Gallery(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.checked_rows(self.rows)
 
+    def test_evaluation_is_prominent_and_footer_describes_real_students(self):
+        report = {
+            "generated_at": "2026-10-27T12:00:00Z",
+            "evaluation": {"available": True, "milestones": [
+                {"title": "Données", "observed": True},
+                {"title": "Tests", "observed": False},
+            ], "priorities": ["Vérifier le cas vide."]},
+            "milestones": [], "criteria": [],
+        }
+        page = module.render_gallery(self.rows, progression={"p01": report})
+        self.assertIn("Évaluation automatique des projets", page)
+        self.assertIn("Voir l’évaluation automatique", page)
+        self.assertIn("1/6 jalons avec indices", page)
+        self.assertLess(page.index("Voir l’évaluation automatique"), page.index('class="project-link"'))
+        self.assertIn("Données réelles de la promotion", page)
+        self.assertNotIn("Données fictives uniquement", page)
+        detail = module.render_progress(self.rows[0], report)
+        self.assertIn('id="evaluation-automatique"', detail)
+        self.assertIn("Priorités proposées", detail)
+        self.assertIn("Vérifier le cas vide.", detail)
+        self.assertIn("Évaluation enseignante facultative", detail)
+
     def test_path_cannot_inject_caddy_configuration(self):
         self.rows[0]["slug"] = "x/../__deploy"
         with self.assertRaises(ValueError):

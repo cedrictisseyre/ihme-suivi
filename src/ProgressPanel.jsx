@@ -1,4 +1,5 @@
 import React from "react";
+import AutomaticEvaluation from "./AutomaticEvaluation.jsx";
 
 export default function ProgressPanel({ p, busy, analyze }) {
   const report = p.progression;
@@ -7,14 +8,15 @@ export default function ProgressPanel({ p, busy, analyze }) {
       <div className="titlebar">
         <div>
           <p className="eyebrow">M2 IHME STAPS · MODULE DE 10 H</p>
-          <h2>Bilan et prochaines actions</h2>
+          <h2>Évaluation automatique du projet</h2>
         </div>
         <button disabled={busy || !p.repository_url} onClick={analyze}>
-          {busy ? "Analyse en cours…" : "Analyser le dépôt"}
+          {busy ? "Analyse en cours…" : "Actualiser l’évaluation"}
         </button>
       </div>
+      <AutomaticEvaluation p={p} />
       <p>
-        Un petit scénario utile, des données fictives, un calcul expliqué et
+        Un petit scénario utile, des données structurées, un calcul expliqué et
         trois essais : normal, vide et limite.
       </p>
       <p className="muted">

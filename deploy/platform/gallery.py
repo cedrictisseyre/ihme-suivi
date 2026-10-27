@@ -25,6 +25,8 @@ STYLE += """*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var
 
 STYLE += ".project-menu{display:flex;flex-wrap:wrap;gap:16px;margin:12px 0}.project-menu a,.project-link{color:var(--accent)}.project-link{text-decoration:none}.project-menu a{padding:8px 0}.progress-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin:16px 0;overflow-wrap:anywhere}.progress-item h3{margin-top:0}.status-label{font-weight:650;color:var(--accent)}summary{cursor:pointer;font-weight:600}a:focus-visible{outline:3px solid var(--focus);outline-offset:3px}code{overflow-wrap:anywhere}"
 
+STYLE += ".automatic-evaluation{background:var(--subtle);border:2px solid var(--accent);border-radius:12px;padding:20px;margin:12px 0}.automatic-evaluation h2,.automatic-evaluation h3{margin-top:0}.automatic-count{display:block;font-size:20px;line-height:1.4;color:var(--accent)}.automatic-cta{display:block;margin-top:14px;padding:12px;border-radius:8px;background:var(--button-bg);color:var(--button-text);text-decoration:none;text-align:center;font-size:13px;font-weight:700}.automatic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.automatic-grid>div{padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}.automatic-grid strong{display:block;margin-top:8px;color:var(--accent);font-size:12px}"
+
 THEME_INIT = """(function(){
   var stored=null;
   try{stored=window.localStorage.getItem('ihme-gallery-theme');}catch(error){}
@@ -91,7 +93,7 @@ def page(title, body):
         + STYLE
         + '</style></head><body><header><span class="brand">i. IHME · Atelier de projets</span><button id="theme-toggle" class="theme-toggle" type="button" hidden aria-pressed="false" aria-label="Activer le mode nuit"><span id="theme-icon" class="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Mode nuit</span></button></header><main>'
         + body
-        + "</main><footer>Applications pédagogiques · Données fictives uniquement</footer><script>"
+        + "</main><footer>Projets étudiants · Données réelles de la promotion</footer><script>"
         + THEME_CONTROL
         + "</script></body></html>"
     )
@@ -189,6 +191,36 @@ def render_preview(project, deployment):
     return '<span class="deployment-status">' + status + "</span>" + preview
 
 
+def render_automatic_evaluation(report, identity, compact=False):
+    report = report if isinstance(report, dict) else {}
+    evaluation = report.get("evaluation") or {}
+    available = evaluation.get("available", bool(report.get("generated_at")))
+    entries = evaluation.get("milestones") or [
+        {"title": m.get("title", ""), "observed": bool((m.get("automatic") or {}).get("observed"))}
+        for m in report.get("milestones", [])
+    ]
+    observed = sum(bool(m.get("observed")) for m in entries)
+    count = str(observed) + '/6 jalons avec indices' if available else 'Évaluation en attente'
+    body = '<section class="automatic-evaluation"' + ('' if compact else ' id="evaluation-automatique"') + '><' + ('h3' if compact else 'h2') + '>Évaluation automatique</' + ('h3' if compact else 'h2') + '><strong class="automatic-count">' + count + '</strong>'
+    if report.get("stale"):
+        body += '<p>À actualiser</p>'
+    if compact:
+        return body + '<a class="automatic-cta" href="/progression/' + identity + '/#evaluation-automatique">Voir l’évaluation automatique →</a></section>'
+    body += '<p>Diagnostic du dépôt : les indices sont à confirmer par une démonstration. La validation des compétences et la note sur 20 restent enseignantes.</p>'
+    if available:
+        strengths = [html.escape(str(m.get("title", ""))) for m in entries if m.get("observed")]
+        body += '<h3>Points repérés automatiquement</h3><p>' + (' · '.join(strengths) if strengths else 'Aucun indice concluant dans l’échantillon lu ; à vérifier.') + '</p><h3>Priorités proposées</h3><ol>'
+        for priority in evaluation.get("priorities", []):
+            body += '<li>' + html.escape(str(priority)) + '</li>'
+        body += '</ol><div class="automatic-grid">'
+        for entry in entries:
+            body += '<div>' + html.escape(str(entry.get("title", ""))) + '<strong>' + ('Indices repérés' if entry.get("observed") else 'À vérifier') + '</strong></div>'
+        body += '</div>'
+    else:
+        body += '<p>Publier le travail dans le dépôt, puis demander une évaluation automatique.</p>'
+    return body + '</section>'
+
+
 def render_gallery(rows, activity=None, deployments=None, progression=None):
     deployments = deployments or {}
     activity = activity or {}
@@ -205,7 +237,7 @@ def render_gallery(rows, activity=None, deployments=None, progression=None):
         cards.append(
             '<article class="card"><small>' + identity + '</small><span class="student-name">'
             + html.escape(r.get("student_name", "")) + '</span><h2>'
-            + html.escape(r["title"]) + '</h2><a class="project-link" href="/'
+            + html.escape(r["title"]) + '</h2>' + render_automatic_evaluation(report, r["id"], compact=True) + '<a class="project-link" href="/'
             + r["slug"] + '/" aria-label="Ouvrir le site du projet ' + identity + '">'
             + render_preview(r, deployments.get(r["id"])) + '</a>'
             + render_chart(activity.get(r["id"])) + progress
@@ -215,7 +247,7 @@ def render_gallery(rows, activity=None, deployments=None, progression=None):
         )
     return page(
         "IHME — Les projets",
-        '<p class="eyebrow">ATELIER REACT · EXPRESS · POSTGRESQL</p><h1>Les projets de la promotion</h1><p class="intro">Explorez les applications et consultez la progression de chaque projet, les attendus et les prochaines actions.</p><p class="notice">'
+        '<p class="eyebrow">ATELIER REACT · EXPRESS · POSTGRESQL</p><h1>Les projets de la promotion</h1><p class="intro">Explorez les applications et consultez l’évaluation automatique de chaque projet, les attendus et les prochaines actions.</p><section class="automatic-evaluation"><h2>Évaluation automatique des projets</h2><p>Chaque carte affiche le diagnostic automatique des six jalons. Ouvrez « Voir l’évaluation automatique » pour consulter les points repérés et les priorités. Ce diagnostic ne constitue pas une note sur 20.</p></section><p class="notice">'
         + str(len(rows)) + ' espaces préparés. Un espace reste en attente tant que son application n’a pas été déployée par son auteur.</p><div class="grid">'
         + "".join(cards) + "</div>",
     )
@@ -234,10 +266,10 @@ def render_progress(project, report=None):
     identity = "P" + str(int(project["id"][1:]))
     intro = '<nav class="project-menu"><a href="/">← Tous les projets</a><a href="/' + project["slug"] + '/">Voir le site ↗</a></nav><p class="eyebrow">' + identity + ' · M2 IHME STAPS · 10 HEURES</p><h1>' + escape(project["title"]) + '</h1><p>' + escape(project.get("student_name", "")) + '</p><p class="notice">Progression formative publique. Un indice automatique n’est pas une compétence validée ni une note. Priorité : un scénario utile, un calcul expliqué et trois essais simples.</p>'
     if not isinstance(report, dict):
-        return page(identity + " — Progression", intro + '<h2>Bilan à préparer</h2><p>La première analyse n’est pas encore disponible. Préparez un exemple normal, un cas vide et un cas limite, puis expliquez votre calcul et vos données à l’enseignant.</p>')
+        return page(identity + " — Progression", intro + render_automatic_evaluation(None, project["id"]) + '<h2>Bilan à préparer</h2><p>La première analyse n’est pas encore disponible. Préparez un exemple normal, un cas vide et un cas limite, puis expliquez votre calcul et vos données à l’enseignant.</p>')
     milestones = report.get("milestones", [])
     validated = sum(m.get("status") == "done" for m in milestones)
-    body = intro + '<h2>Où en est le projet ?</h2><p><strong>' + str(validated) + '/6 jalons validés</strong> par l’enseignant.</p>'
+    body = intro + render_automatic_evaluation(report, project["id"]) + '<h2>Validation enseignante des jalons</h2><p><strong>' + str(validated) + '/6 jalons validés</strong> par l’enseignant.</p>'
     if report.get("generated_at"):
         sha = str(report.get("sha", ""))
         ref = sha[:7] if re.fullmatch(r"[a-f0-9]{40,64}", sha) else "non disponible"
@@ -248,7 +280,7 @@ def render_progress(project, report=None):
         body += '<p class="notice">Ce dépôt ne contient pas encore de commit. Publiez un premier commit, puis demandez une nouvelle analyse. Aucun zéro n’est attribué automatiquement.</p>'
     elif report.get("stale") or report.get("unavailable"):
         body += '<p class="notice">Analyse à actualiser ou accès au dépôt indisponible. Le dernier bilan réussi est conservé ; cela ne signifie pas que le travail est absent.</p>'
-    body += '<nav class="project-menu" aria-label="Sections de la progression"><a href="#jalons">Jalons</a><a href="#revues">Revues</a><a href="#evaluation">Évaluation facultative</a></nav><h2 id="jalons">Les jalons et les prochaines actions</h2>'
+    body += '<nav class="project-menu" aria-label="Sections de la progression"><a href="#evaluation-automatique">Évaluation automatique</a><a href="#jalons">Jalons</a><a href="#revues">Revues</a><a href="#evaluation">Évaluation enseignante</a></nav><h2 id="jalons">Les jalons et les prochaines actions</h2>'
     labels = {"todo": "À faire · à vérifier", "doing": "En cours", "done": "Validé", "blocked": "Bloqué"}
     for m in milestones:
         status = m.get("status", "todo")
@@ -268,7 +300,7 @@ def render_progress(project, report=None):
     body += '<details><summary>Historique des bilans automatiques</summary><p>Ces relevés ne sont pas des échanges avec l’enseignant.</p><ul>'
     for h in report.get("history", []):
         body += '<li>' + public_date(h.get("generated_at")) + ' · ' + escape(str(h.get("sha", ""))[:7]) + ' · ' + escape(h.get("observed")) + '/6 jalons avec indices</li>'
-    body += '</ul></details><h2 id="evaluation">Évaluation facultative</h2><p>La grille est renseignée par l’enseignant après démonstration et explication. Une compétence non observée reste à vérifier ; aucun zéro n’est attribué automatiquement.</p>'
+    body += '</ul></details><h2 id="evaluation">Évaluation enseignante facultative</h2><p>La grille est renseignée par l’enseignant après démonstration et explication. Une compétence non observée reste à vérifier ; aucun zéro n’est attribué automatiquement.</p>'
     assessment = report.get("assessment")
     criteria = report.get("criteria", [])
     scores = {s.get("key"): s.get("value") for s in assessment.get("scores", [])} if isinstance(assessment, dict) else {}

@@ -1,3 +1,4 @@
+import { automaticEvaluation } from "./automatic-evaluation.js";
 import { RUBRIC, ASSESSMENT_GUIDE, RUBRIC_VERSION } from "./rubric.js";
 import { repositoryAddress } from "./git.js";
 
@@ -40,6 +41,7 @@ export async function attachProgress(db, project) {
     progression: {
       version: RUBRIC_VERSION,
       analysis,
+      evaluation: automaticEvaluation(analysis),
       error: changedRepository
         ? "Dépôt modifié : relancer l’analyse."
         : report?.error || "",
@@ -69,6 +71,7 @@ export function publicProgress(project) {
     unavailable: !!progression?.error,
     empty: !!progression?.error?.startsWith("Aucun commit dans ce dépôt"),
     sampled: !!progression?.analysis?.partial,
+    evaluation: automaticEvaluation(progression?.analysis),
     validated: valid,
     observed:
       progression?.analysis?.milestones.filter((m) => m.observed).length || 0,

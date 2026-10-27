@@ -4,8 +4,7 @@ export const RUBRIC = [
   {
     position: 1,
     title: "Cadrage du besoin",
-    expected:
-      "Décrire un utilisateur STAPS, un besoin et un scénario simple avec des données fictives.",
+    expected: "Décrire un utilisateur STAPS, un besoin et un scénario simple.",
     demonstration:
       "Expliquer en une minute qui utilise l’outil et ce qu’il permet de faire.",
     next: "Compléter le README : utilisateur, problème, entrée et résultat attendu.",
@@ -16,7 +15,7 @@ export const RUBRIC = [
     expected:
       "Identifier les données utiles, leurs types, une clé primaire et, si nécessaire, une relation. Montrer une requête SQL.",
     demonstration:
-      "Présenter une table et expliquer une requête SELECT ou INSERT sur des données fictives.",
+      "Présenter une table et expliquer une requête SELECT ou INSERT sur un jeu d’exemples.",
     next: "Écrire un petit schéma SQL et un jeu d’exemples, puis expliquer les clés et les unités.",
   },
   {

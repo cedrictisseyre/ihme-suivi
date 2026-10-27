@@ -56,3 +56,12 @@ Chaque projet dispose d’un lien **Progression** public, sans connexion. Il pr�
 Les observations privées déjà saisies ne sont pas exportées. Dans le carnet, le champ « Retour public » d’un jalon permet de guider l’étudiant. Une revue ou une évaluation devient publique avec son option de publication ; pour les revues, seuls les acquis et la prochaine étape sont publiés, pas les champs blocage ou accompagnement. Les anciens éléments restent privés par défaut. Seul l’enseignant connecté peut modifier les résultats.
 
 L’analyse peut être déclenchée depuis une fiche ou pour la promotion. Elle est aussi exécutée après la synchronisation Git planifiée ; les analyses sont renouvelées toutes les quatre heures et la galerie est régénérée toutes les cinq minutes par les timers existants. L’analyse de promotion lancée dans le carnet s’exécute en arrière-plan ; suivre son résultat avant d’actualiser la galerie. Installer les scripts de galerie et la configuration Caddy mis à jour pour exposer `/progression/`.
+
+
+## Lire l’évaluation automatique dans les deux espaces
+
+La galerie et le carnet affichent un encadré **Évaluation automatique** sur chaque carte, avant la miniature. Il indique le nombre de jalons avec des indices dans le dépôt et ouvre le diagnostic détaillé : points repérés, état des six jalons et trois priorités au maximum. La fiche enseignante s’ouvre directement sur l’onglet **Évaluation automatique**. Le bouton **Actualiser les évaluations automatiques** relance la lecture de la promotion.
+
+Le compteur « 4/6 jalons avec indices » décrit ce que le programme a repéré dans un échantillon ; ce n’est ni une note ni un pourcentage de compétences acquises. La validation enseignante et l’évaluation facultative sur 20 sont affichées séparément. Les bilans indisponibles sont indiqués « Évaluation en attente ».
+
+Le pied de page décrit les données réelles de la promotion suivie. Les exemples ou jeux d’essai de la grille restent des supports pédagogiques.

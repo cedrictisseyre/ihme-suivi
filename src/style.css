@@ -601,3 +601,72 @@ footer {
   font-size: 12px;
   font-weight: 600;
 }
+
+.evaluation-banner,
+.automatic-evaluation {
+  background: #eaf2e2;
+  border: 1px solid #b6cb9e;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 18px 0;
+  color: #173530;
+}
+.evaluation-banner h2 {
+  margin: 8px 0;
+}
+.automatic-evaluation .eyebrow {
+  color: #345b24;
+  margin: 0 0 9px;
+  font-size: 11px;
+}
+.automatic-count {
+  display: block;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.automatic-compact {
+  padding: 14px;
+  margin: 6px 0 12px;
+}
+.automatic-compact .automatic-count {
+  font-size: 16px;
+}
+.automatic-open {
+  background: #235d4c;
+  color: #fff;
+  width: 100%;
+  font-size: 12px;
+  padding: 10px 8px;
+  margin-top: 12px;
+}
+.automatic-warning {
+  display: inline-block;
+  margin-top: 8px;
+  color: #714414;
+  font-size: 12px;
+}
+.automatic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+.automatic-grid > div {
+  background: #fff;
+  border: 1px solid #d1dec8;
+  border-radius: 7px;
+  padding: 12px;
+}
+.automatic-grid b {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #345b24;
+}
+
+.detail-site summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #235d4c;
+  padding: 8px 0;
+}

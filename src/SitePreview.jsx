@@ -40,7 +40,7 @@ export default function SitePreview({ p }) {
           target="_blank"
           rel="noreferrer"
         >
-          Progression publique ↗
+          Évaluation automatique publique ↗
         </a>
       )}
     </div>

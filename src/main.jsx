@@ -4,6 +4,7 @@ import "./style.css";
 import CommitChart from "./CommitChart.jsx";
 import SitePreview from "./SitePreview.jsx";
 import ProgressPanel from "./ProgressPanel.jsx";
+import AutomaticEvaluation from "./AutomaticEvaluation.jsx";
 async function api(url, method = "GET", body) {
   const r = await fetch("/api" + url, {
     method,
@@ -132,6 +133,9 @@ function App() {
       if (timer) clearInterval(timer);
     };
   }, [auth, analysisJob.running]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selected?.id, selected === "new"]);
   async function save(url, method, v) {
     const p = await api(url, method, v);
     setProjects((ps) =>
@@ -245,7 +249,6 @@ function App() {
               </div>
               <div className="actions">
                 <button
-                  className="secondary"
                   disabled={busy || analysisJob.running}
                   onClick={() =>
                     run(async () => {
@@ -260,7 +263,7 @@ function App() {
                 >
                   {analysisJob.running
                     ? "Analyse de la promotion…"
-                    : "Analyser la progression"}
+                    : "Actualiser les évaluations automatiques"}
                 </button>
                 <button
                   className="secondary"
@@ -282,6 +285,25 @@ function App() {
                 </button>
               </div>
             </div>
+            <section className="evaluation-banner">
+              <div>
+                <p className="eyebrow">
+                  ÉVALUATION AUTOMATIQUE DE LA PROMOTION
+                </p>
+                <h2>
+                  {
+                    projects.filter((p) => p.progression?.evaluation?.available)
+                      .length
+                  }
+                  /{projects.length} projets évalués automatiquement
+                </h2>
+                <p>
+                  Sur chaque carte : consultez le diagnostic des six jalons et
+                  les priorités proposées. Ouvrez l’évaluation pour examiner les
+                  preuves et conserver vos corrections.
+                </p>
+              </div>
+            </section>
             <div className="stats">
               <article>
                 <strong>{projects.length}</strong>projets suivis
@@ -360,6 +382,11 @@ function App() {
                     {p.objective && (
                       <p className="card-objective">{p.objective}</p>
                     )}
+                    <AutomaticEvaluation
+                      p={p}
+                      compact
+                      onOpen={() => setSelected(p)}
+                    />
                     <SitePreview
                       key={p.site?.thumbnail || p.deployed_url}
                       p={p}
@@ -492,16 +519,17 @@ function Detail({ p, meta, busy, back, save }) {
           </a>
         )}
       </div>
-      <div className="detail-site">
+      <details className="detail-site">
+        <summary>Aperçu du site et lien</summary>
         <SitePreview p={p} />
-      </div>
+      </details>
       <div className="tabs" role="tablist" aria-label="Contenu de la fiche">
         {[
-          ["progression", "Bilan et conseils"],
+          ["progression", "Évaluation automatique"],
           ["activity", "Activité Git"],
           ["milestones", "Jalons"],
           ["reviews", "Journal des revues"],
-          ["assessment", "Évaluation facultative"],
+          ["assessment", "Évaluation enseignante"],
           ["project", "Fiche projet"],
         ].map(([k, t]) => (
           <button
@@ -820,7 +848,7 @@ function Assessment({ a, criteria, guide = [], onSave, busy }) {
       }}
     >
       <p className="eyebrow">GRILLE FACULTATIVE</p>
-      <h2>Évaluer la progression</h2>
+      <h2>Évaluation enseignante facultative</h2>
       <p>
         Les critères peuvent rester vides. Le total est affiché une fois la
         grille complète.
