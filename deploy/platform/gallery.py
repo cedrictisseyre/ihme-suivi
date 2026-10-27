@@ -27,6 +27,38 @@ STYLE += ".project-menu{display:flex;flex-wrap:wrap;gap:16px;margin:12px 0}.proj
 
 STYLE += ".automatic-evaluation{background:var(--subtle);border:2px solid var(--accent);border-radius:12px;padding:20px;margin:12px 0}.automatic-evaluation h2,.automatic-evaluation h3{margin-top:0}.automatic-count{display:block;font-size:20px;line-height:1.4;color:var(--accent)}.automatic-cta{display:block;margin-top:14px;padding:12px;border-radius:8px;background:var(--button-bg);color:var(--button-text);text-decoration:none;text-align:center;font-size:13px;font-weight:700}.automatic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.automatic-grid>div{padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}.automatic-grid strong{display:block;margin-top:8px;color:var(--accent);font-size:12px}"
 
+# Vue de promotion compacte ; les fiches de progression gardent leur mise en page.
+STYLE += """
+.gallery-page header{padding:12px 28px;gap:12px}
+.gallery-page main{max-width:1440px;padding:24px 28px}
+.gallery-page h1{font-size:clamp(26px,3vw,34px);margin:8px 0}
+.gallery-page .eyebrow{font-size:11px;margin:0 0 8px}
+.gallery-page .intro{font-size:13px;line-height:1.5;max-width:780px;margin:8px 0 12px}
+.gallery-page main>.automatic-evaluation{padding:12px 16px;border-width:1px;margin:12px 0}
+.gallery-page main>.automatic-evaluation h2{font-size:18px;margin:0 0 6px}
+.gallery-page main>.automatic-evaluation p{font-size:12px;line-height:1.5;margin:0}
+.gallery-page .notice{padding:10px 14px;font-size:12px;line-height:1.5;margin:12px 0}
+.gallery-page .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}
+.gallery-page .card{padding:14px;gap:8px;border-radius:10px;min-width:0}
+.gallery-page .card h2{font-size:16px;line-height:1.3;flex:initial;overflow-wrap:anywhere}
+.gallery-page .card small{font-size:11px}
+.gallery-page .student-name{font-size:12px}
+.gallery-page .card .automatic-evaluation{padding:10px;margin:0;border-width:1px;border-radius:8px}
+.gallery-page .card .automatic-evaluation h3{font-size:13px;line-height:1.3;margin:0 0 5px}
+.gallery-page .card .automatic-count{font-size:14px}
+.gallery-page .automatic-cta{margin-top:8px;padding:8px;font-size:11px;border-radius:6px}
+.gallery-page .project-preview,.gallery-page .preview-pending{aspect-ratio:2/1;border-radius:6px}
+.gallery-page .commit-chart{margin:2px 0}
+.gallery-page .commit-chart svg{height:32px;margin:3px 0}
+.gallery-page .chart-empty{margin:4px 0}
+.gallery-page .project-menu{gap:12px;margin:0}
+.gallery-page .project-menu a{padding:6px 0;font-size:12px}
+.gallery-page footer{padding:16px 28px;font-size:11px}
+@media(max-width:1200px){.gallery-page .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.gallery-page .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.gallery-page header{padding:12px 16px}.gallery-page main{padding:20px 16px}.gallery-page .grid{grid-template-columns:minmax(0,1fr)}.gallery-page .automatic-cta{padding:10px}.gallery-page .project-preview,.gallery-page .preview-pending{aspect-ratio:2.2/1}}
+"""
+
 THEME_INIT = """(function(){
   var stored=null;
   try{stored=window.localStorage.getItem('ihme-gallery-theme');}catch(error){}
@@ -83,7 +115,7 @@ def checked_rows(rows):
     return rows
 
 
-def page(title, body):
+def page(title, body, gallery=False):
     return (
         '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'
         + html.escape(title)
@@ -91,7 +123,7 @@ def page(title, body):
         + THEME_INIT
         + "</script><style>"
         + STYLE
-        + '</style></head><body><header><span class="brand">i. IHME · Atelier de projets</span><button id="theme-toggle" class="theme-toggle" type="button" hidden aria-pressed="false" aria-label="Activer le mode nuit"><span id="theme-icon" class="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Mode nuit</span></button></header><main>'
+        + '</style></head><body' + (' class="gallery-page"' if gallery else '') + '><header><span class="brand">i. IHME · Atelier de projets</span><button id="theme-toggle" class="theme-toggle" type="button" hidden aria-pressed="false" aria-label="Activer le mode nuit"><span id="theme-icon" class="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Mode nuit</span></button></header><main>'
         + body
         + "</main><footer>Projets étudiants · Données réelles de la promotion</footer><script>"
         + THEME_CONTROL
@@ -250,6 +282,7 @@ def render_gallery(rows, activity=None, deployments=None, progression=None):
         '<p class="eyebrow">ATELIER REACT · EXPRESS · POSTGRESQL</p><h1>Les projets de la promotion</h1><p class="intro">Explorez les applications et consultez l’évaluation automatique de chaque projet, les attendus et les prochaines actions.</p><section class="automatic-evaluation"><h2>Évaluation automatique des projets</h2><p>Chaque carte affiche le diagnostic automatique des six jalons. Ouvrez « Voir l’évaluation automatique » pour consulter les points repérés et les priorités. Ce diagnostic ne constitue pas une note sur 20.</p></section><p class="notice">'
         + str(len(rows)) + ' espaces préparés. Un espace reste en attente tant que son application n’a pas été déployée par son auteur.</p><div class="grid">'
         + "".join(cards) + "</div>",
+        gallery=True,
     )
 
 
