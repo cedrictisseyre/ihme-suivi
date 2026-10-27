@@ -18,6 +18,7 @@ TEACHER_BASE = Path("/etc/ihme-teacher")
 TEACHER_EXECUTABLE = "/usr/local/sbin/ihme-teacher-deploy"
 SOCKET = "/run/ihme-deploy/http.sock"
 GATE = threading.Lock()
+PUBLIC_ERRORS = {"configuration", "registry_auth", "image_pull", "unhealthy", "unhealthy_rollback"}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -100,10 +101,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             )
             if result.returncode:
                 print(project + ": déploiement refusé ou non sain.", flush=True)
+                code = result.stderr.strip().removeprefix("DEPLOY_ERROR:")
+                if code not in PUBLIC_ERRORS:
+                    code = "deployment_failed"
                 return self.reply(
                     422,
                     {
-                        "error": "Déploiement refusé ou version non saine. Consulter l’enseignant."
+                        "error": "Déploiement refusé ou version non saine. Consulter l’enseignant.",
+                        "error_code": code
                     },
                 )
             return self.reply(

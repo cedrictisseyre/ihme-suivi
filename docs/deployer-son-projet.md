@@ -106,6 +106,14 @@ Faire un commit et un push. Dans **Actions**, attendre le succès de **Construir
 
 Ne partagez jamais le jeton de déploiement dans une capture d’écran, un rapport public ou une issue. La construction ne reçoit pas les observations du carnet enseignant ni les identifiants des autres projets.
 
+## Si le déploiement échoue avec HTTP 422
+
+Le serveur a accepté l’authentification, mais n’a pas pu terminer le déploiement. Ce statut seul ne permet pas de connaître la cause. Le client à jour indique si l’échec concerne la configuration Docker, la connexion à GHCR, le téléchargement de l’image ou la santé de l’application.
+
+Recopier `deploy/request.py` depuis le modèle étudiant pour bénéficier de ces messages. L’enseignant doit également installer les versions à jour de `deploy/students/api.py` et `deploy/students/deploy.py` sur le serveur et redémarrer le service `ihme-deploy`. Un ancien serveur continue de renvoyer un message générique.
+
+Pour un échec de téléchargement, vérifier la correspondance entre le dépôt GHCR autorisé sur le serveur et celui publié par le workflow, ainsi que les droits du package. Pour une application non saine, l’enseignant doit examiner ses journaux : démarrage de Node, accès PostgreSQL et réponse de `/api/health` sur le port 3000. Ne pas publier les journaux contenant des identifiants.
+
 ## Cas du projet hébergé sur GitLab
 
 Le modèle GitHub Actions ne s’exécute pas sur GitLab. Un projet GitLab nécessite un pipeline `.gitlab-ci.yml` et son registre, ou une migration volontaire vers un dépôt GitHub. Ne changer ni forge ni visibilité sans l’auteur du projet. L’accès de déploiement reste utilisable en transmettant le digest ; les identifiants d’un registre GitLab privé doivent être configurés séparément côté serveur. Le jeton temporaire `registry_token` de ce modèle est réservé à GHCR.

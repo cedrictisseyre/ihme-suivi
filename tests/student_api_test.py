@@ -121,6 +121,18 @@ class DeployAPI(unittest.TestCase):
                 execute.call_args.kwargs["input"], "sha256:" + "a" * 64 + "\n"
             )
 
+    def test_failure_exposes_only_allowlisted_code(self):
+        with patch.object(api.subprocess, "run") as execute:
+            execute.return_value.returncode = 1
+            execute.return_value.stderr = "DEPLOY_ERROR:image_pull\n"
+            status, data = self.call()
+            self.assertEqual(status, 422)
+            self.assertEqual(data["error_code"], "image_pull")
+            execute.return_value.stderr = "private registry token or database URL"
+            status, data = self.call()
+            self.assertEqual(data["error_code"], "deployment_failed")
+            self.assertNotIn("private", json.dumps(data))
+
     def test_concurrent_deployment_is_refused(self):
         with api.GATE:
             self.assertEqual(self.call()[0], 409)

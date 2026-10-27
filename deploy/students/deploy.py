@@ -16,6 +16,10 @@ BASE = Path("/etc/ihme-students")
 TEMPLATE = Path("/opt/ihme-platform/compose.student.yaml")
 
 
+class DeploymentFailure(ValueError):
+    """Code public fixe ; aucune sortie Docker ne traverse l’API."""
+
+
 def validate_request(project, digest):
     if not re.fullmatch(r"p[0-9]{2}", project):
         raise ValueError("Identifiant de projet invalide.")
@@ -80,15 +84,22 @@ def deploy(project, digest):
 
     def compose(*args):
         # Ne pas afficher les messages Docker : ils peuvent citer la configuration de l’application.
-        return subprocess.run(
-            command + list(args),
-            env=environment,
-            cwd=folder,
-            check=True,
-            text=True,
-            capture_output=True,
-            timeout=180,
-        ).stdout.strip()
+        try:
+            return subprocess.run(
+                command + list(args),
+                env=environment,
+                cwd=folder,
+                check=True,
+                text=True,
+                capture_output=True,
+                timeout=180,
+            ).stdout.strip()
+        except subprocess.SubprocessError as error:
+            code = {"config": "configuration", "pull": "image_pull"}.get(args[0])
+            if code:
+                raise DeploymentFailure("DEPLOY_ERROR:" + code) from error
+            raise
+
 
     with (folder / ".deploy.lock").open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -104,22 +115,25 @@ def deploy(project, digest):
                 if not reference.startswith("ghcr.io/"):
                     raise ValueError("Le jeton éphémère fourni est réservé à ghcr.io.")
                 environment["DOCKER_CONFIG"] = auth
-                subprocess.run(
-                    [
-                        "docker",
-                        "login",
-                        "ghcr.io",
-                        "--username",
-                        reference.split("/")[1],
-                        "--password-stdin",
-                    ],
-                    input=registry_token,
-                    env=environment,
-                    text=True,
-                    capture_output=True,
-                    check=True,
-                    timeout=30,
-                )
+                try:
+                    subprocess.run(
+                        [
+                            "docker",
+                            "login",
+                            "ghcr.io",
+                            "--username",
+                            reference.split("/")[1],
+                            "--password-stdin",
+                        ],
+                        input=registry_token,
+                        env=environment,
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                        timeout=30,
+                    )
+                except subprocess.SubprocessError as error:
+                    raise DeploymentFailure("DEPLOY_ERROR:registry_auth") from error
             compose("pull", "app")
         environment.pop("DOCKER_CONFIG", None)
         reference = compose("config", "--images").strip()
@@ -159,10 +173,10 @@ def deploy(project, digest):
                     "app",
                 )
                 raise ValueError(
-                    "Nouvelle version non saine ; version précédente rétablie."
+                    "DEPLOY_ERROR:unhealthy_rollback"
                 )
             compose("stop", "app")
-            raise ValueError("Première version non saine ; application arrêtée.")
+            raise ValueError("DEPLOY_ERROR:unhealthy")
         pending = folder / ".current-image-digest.new"
         with pending.open("w") as target:
             os.chmod(pending, 0o600)
