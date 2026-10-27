@@ -117,6 +117,8 @@ class Gallery(unittest.TestCase):
         self.assertIn("0/6", page)
         self.assertIn("13:00", page)
         self.assertNotIn("<form", page)
+        report["empty"] = True
+        self.assertIn("Publiez un premier commit", module.render_progress(self.rows[0], report))
         caddy = module.render_caddy("suivi.example.fr", "projets.example.fr", self.rows)
         self.assertIn("handle /progression/*", caddy)
         self.assertIn("Bilan à préparer", module.render_progress(self.rows[0]))

@@ -244,7 +244,9 @@ def render_progress(project, report=None):
         body += '<p>Dernier bilan : ' + public_date(report["generated_at"]) + ' · Paris · commit <code>' + ref + '</code>. Lecture d’un échantillon de fichiers, sans exécution du code.</p>'
     else:
         body += '<p>Analyse automatique non encore disponible. Les validations enseignantes restent affichées.</p>'
-    if report.get("stale") or report.get("unavailable"):
+    if report.get("empty"):
+        body += '<p class="notice">Ce dépôt ne contient pas encore de commit. Publiez un premier commit, puis demandez une nouvelle analyse. Aucun zéro n’est attribué automatiquement.</p>'
+    elif report.get("stale") or report.get("unavailable"):
         body += '<p class="notice">Analyse à actualiser ou accès au dépôt indisponible. Le dernier bilan réussi est conservé ; cela ne signifie pas que le travail est absent.</p>'
     body += '<nav class="project-menu" aria-label="Sections de la progression"><a href="#jalons">Jalons</a><a href="#revues">Revues</a><a href="#evaluation">Évaluation facultative</a></nav><h2 id="jalons">Les jalons et les prochaines actions</h2>'
     labels = {"todo": "À faire · à vérifier", "doing": "En cours", "done": "Validé", "blocked": "Bloqué"}

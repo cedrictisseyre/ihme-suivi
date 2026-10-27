@@ -6,6 +6,7 @@ import { migrate } from "../server/db.js";
 import { createApp } from "../server/app.js";
 import {
   analyzeEvidence,
+  analyzeProject,
   readRepositoryEvidence,
 } from "../server/analyze-progress.js";
 import { publicProgress, exportProgress } from "../server/progression.js";
@@ -163,6 +164,7 @@ test("bilan persistant, priorité des corrections, publication explicite et cons
       origin: "http://localhost",
       secure: false,
       gitFetch: fixtureFetch(),
+      githubToken: "fixture-only",
     };
     const app = createApp(db, config);
     const agent = request.agent(app);
@@ -197,6 +199,16 @@ test("bilan persistant, priorité des corrections, publication explicite et cons
     ).body;
     assert.ok(p.milestones.every((m) => m.status === "doing"));
     assert.equal(p.progression.history.length, 1);
+    await db.query(
+      "INSERT INTO git_snapshots(project_id,last_sha) VALUES($1,$2)",
+      [p.id, sha],
+    );
+    const cached = await analyzeProject(db, p, {
+      useSnapshots: true,
+      gitFetch: () =>
+        assert.fail("Un bilan inchangé ne doit pas relire la forge"),
+    });
+    assert.equal(cached.skipped, true);
     p = (
       await agent
         .put(url + "/milestones/3")
@@ -281,6 +293,16 @@ test("bilan persistant, priorité des corrections, publication explicite et cons
     assert.equal(p.progression.stale, true);
     assert.equal(p.milestones[2].status, "done");
     assert.ok(!JSON.stringify(p.progression).includes("private error"));
+    config.gitFetch = async () => Response.json([]);
+    p = (
+      await agent
+        .post(url + "/analyze")
+        .set("Origin", config.origin)
+        .send({})
+        .expect(200)
+    ).body;
+    assert.match(p.progression.error, /Aucun commit/);
+    assert.equal(publicProgress(p).empty, true);
     p = (
       await agent
         .put(url + "/milestones/3")
@@ -317,4 +339,39 @@ test("bilan persistant, priorité des corrections, publication explicite et cons
   } finally {
     await pg.close();
   }
+});
+
+test("sans jeton : fichiers publics lus sur l’hôte officiel sans appels REST supplémentaires", async () => {
+  let apiCalls = 0,
+    fileCalls = 0;
+  const report = await readRepositoryEvidence(repository, sha, {
+    gitFetch: async (url, options) => {
+      assert.equal(options.redirect, "error");
+      assert.equal(options.headers.Authorization, undefined);
+      if (new URL(url).hostname === "api.github.com") {
+        apiCalls++;
+        return Response.json({
+          truncated: false,
+          tree: [
+            {
+              path: "README.md",
+              type: "blob",
+              mode: "100644",
+              size: 1000,
+              sha: "b".repeat(40),
+            },
+          ],
+        });
+      }
+      assert.equal(
+        url,
+        `https://raw.githubusercontent.com/demo/projet/${sha}/README.md`,
+      );
+      fileCalls++;
+      return new Response(sample[0].content);
+    },
+  });
+  assert.equal(apiCalls, 1);
+  assert.equal(fileCalls, 1);
+  assert.equal(report.milestones[0].observed, true);
 });

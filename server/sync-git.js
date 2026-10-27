@@ -60,6 +60,7 @@ if (process.argv[1]?.endsWith("/sync-git.js")) {
     console.log(
       JSON.stringify({
         progression: await analyzePromotion(db, {
+          useSnapshots: true,
           githubToken: process.env.GITHUB_TOKEN,
           gitlabToken: process.env.GITLAB_TOKEN,
         }),

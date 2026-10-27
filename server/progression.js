@@ -67,6 +67,7 @@ export function publicProgress(project) {
     sha: progression?.analysis?.sha || null,
     stale: !!progression?.stale,
     unavailable: !!progression?.error,
+    empty: !!progression?.error?.startsWith("Aucun commit dans ce dépôt"),
     sampled: !!progression?.analysis?.partial,
     validated: valid,
     observed:

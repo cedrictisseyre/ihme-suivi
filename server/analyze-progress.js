@@ -171,21 +171,34 @@ export async function readRepositoryEvidence(repository, sha, config = {}) {
       skipped = true;
       continue;
     }
-    const result = await request(
-      github
-        ? `/git/blobs/${entry.sha}`
-        : `/repository/files/${encodeURIComponent(entry.path)}/raw?ref=${sha}`,
-      100_000,
-    );
-    const data = github ? JSON.parse(result.text) : null;
-    if (
-      github &&
-      (data.encoding !== "base64" || typeof data.content !== "string")
-    )
-      throw new Error("Contenu indisponible.");
-    const content = github
-      ? Buffer.from(data.content, "base64").toString("utf8")
-      : result.text;
+    let content;
+    if (github && !config.githubToken) {
+      // Les fichiers publics se lisent sans consommer un appel REST par fichier.
+      const raw = `https://raw.githubusercontent.com/${repo.path}/${sha}/${entry.path.split("/").map(encodeURIComponent).join("/")}`;
+      const response = await (config.gitFetch || fetch)(raw, {
+        headers: { "User-Agent": "ihme-suivi" },
+        redirect: "error",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error("Fichier public indisponible.");
+      content = await limitedText(response, 50_000);
+    } else {
+      const result = await request(
+        github
+          ? `/git/blobs/${entry.sha}`
+          : `/repository/files/${encodeURIComponent(entry.path)}/raw?ref=${sha}`,
+        100_000,
+      );
+      const data = github ? JSON.parse(result.text) : null;
+      if (
+        github &&
+        (data.encoding !== "base64" || typeof data.content !== "string")
+      )
+        throw new Error("Contenu indisponible.");
+      content = github
+        ? Buffer.from(data.content, "base64").toString("utf8")
+        : result.text;
+    }
     if (Buffer.byteLength(content) > 50_000) {
       skipped = true;
       continue;
@@ -204,13 +217,26 @@ export async function analyzeProject(db, project, config = {}) {
   if (active.has(project.id)) return { skipped: true };
   active.add(project.id);
   try {
-    const activity = await getActivity(project.repository_url, {
-      perPage: 1,
-      githubToken: config.githubToken,
-      gitlabToken: config.gitlabToken,
-      fetcher: config.gitFetch,
-    });
-    const sha = activity.commits[0]?.sha;
+    let sha;
+    if (config.useSnapshots) {
+      const snapshot = (
+        await db.query(
+          "SELECT last_sha,error FROM git_snapshots WHERE project_id=$1",
+          [project.id],
+        )
+      ).rows[0];
+      if (!snapshot || snapshot.error)
+        throw new Error("Synchronisation Git à vérifier.");
+      sha = snapshot.last_sha;
+    } else {
+      const activity = await getActivity(project.repository_url, {
+        perPage: 1,
+        githubToken: config.githubToken,
+        gitlabToken: config.gitlabToken,
+        fetcher: config.gitFetch,
+      });
+      sha = activity.commits[0]?.sha;
+    }
     if (!sha) throw new Error("Dépôt sans commit.");
     const previous = (
       await db.query(
@@ -247,13 +273,18 @@ export async function analyzeProject(db, project, config = {}) {
       ],
     );
     return { success: true };
-  } catch {
+  } catch (error) {
     // Aucun message du fournisseur, contenu ou secret n’est persisté ni publié.
     await db.query(
       "INSERT INTO progress_reports(project_id,error) VALUES($1,$2) ON CONFLICT(project_id) DO UPDATE SET error=EXCLUDED.error,attempted_at=now()",
       [
         project.id,
-        "Analyse indisponible : vérifier le dépôt, ses droits ou le quota. Le dernier bilan réussi est conservé.",
+        [
+          "Dépôt sans commit.",
+          "Dépôt vide : aucun commit disponible.",
+        ].includes(error.message)
+          ? "Aucun commit dans ce dépôt : publier un premier commit, puis relancer l’analyse."
+          : "Analyse indisponible : vérifier le dépôt, ses droits ou le quota. Le dernier bilan réussi est conservé.",
       ],
     );
     return { failed: true };
