@@ -47,6 +47,7 @@ def update():
                 "id": project["id"],
                 "title": project["title"],
                 "slug": project["slug"],
+                "repository": project.get("repository", ""),
                 "student_name": row.get("student_name", "") if row else "",
             }
         )

@@ -52,6 +52,7 @@ class GalleryExport(unittest.TestCase):
             self.assertEqual(set(index[0]), {"id", "repository", "slug"})
             public = platform / "public"
             self.assertIn('/progression/p01/', (public / "index.html").read_text())
+            self.assertIn('href="https://github.com/demo/durees"', (public / "index.html").read_text())
             page = (public / "progression/p01/index.html").read_text()
             self.assertIn("Compléter le README", page)
             self.assertNotIn("PRIVATE_TOKEN", page)

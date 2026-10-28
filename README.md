@@ -111,3 +111,5 @@ Les graphiques Git sont calculés sur la branche par défaut, avec pagination et
 ## Progression formative publique
 
 Le [référentiel pour les 10 heures de M2 IHME STAPS](docs/grille-progression-m2-staps.md) précise les attendus des six jalons, les preuves à montrer et la grille facultative sur 20. Le carnet propose un bilan à partir d’un échantillon du dépôt ; les validations et notes restent modifiables par l’enseignant. Dans la galerie, le menu de chaque projet donne accès à sa progression sans identification. Les anciennes observations restent privées ; seuls les retours publics et les revues/évaluations explicitement publiées sont exportés.
+
+La galerie propose, à la demande de l’enseignant, un lien direct vers le dépôt GitHub ou GitLab de chaque projet. Seules des URLs HTTPS de ces forges, sans identifiant ni paramètre privé, sont publiées.

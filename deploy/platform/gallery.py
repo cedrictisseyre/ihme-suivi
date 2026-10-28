@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
 
 LIGHT_PALETTE = "color-scheme:light;--bg:#f6f7f2;--surface:#fff;--text:#173530;--muted:#60716a;--eyebrow:#51725f;--border:#dce3db;--hover:#67845a;--focus:#a1bf7c;--accent:#235d4c;--subtle:#eaf0e4;--button-bg:#235d4c;--button-text:#fff;--caption:#355b46;--chart-bar:#6f9460;--chart-zero:#d4ddcf;"
 DARK_PALETTE = "color-scheme:dark;--bg:#101914;--surface:#19271e;--text:#e5eee4;--muted:#b1c2b3;--eyebrow:#b5cc9f;--border:#35483a;--hover:#8cad77;--focus:#bcdb9a;--accent:#c3dfad;--subtle:#233529;--button-bg:#bcdb9a;--button-text:#142014;--caption:#b7ceb6;--chart-bar:#a0c886;--chart-zero:#3c5141;"
@@ -253,6 +254,29 @@ def render_automatic_evaluation(report, identity, compact=False):
     return body + '</section>'
 
 
+def repository_link(project):
+    """Lien de forge uniquement : aucun identifiant, jeton, paramètre ou hôte arbitraire."""
+    value = project.get("repository", "")
+    if not isinstance(value, str):
+        return ""
+    try:
+        url = urlsplit(value)
+        if (url.scheme != "https" or url.hostname not in {"github.com", "gitlab.com"}
+                or url.username or url.password or url.port or url.query or url.fragment):
+            return ""
+    except ValueError:
+        return ""
+    parts = url.path.strip("/").split("/")
+    if (len(parts) < 2 or (url.hostname == "github.com" and len(parts) != 2)
+            or any(not re.fullmatch(r"[A-Za-z0-9_.-]+", part) or part in {".", ".."} for part in parts)):
+        return ""
+    label = "GitHub" if url.hostname == "github.com" else "GitLab"
+    return ('<a class="arrow repository-link" href="' + html.escape(value, quote=True)
+            + '" target="_blank" rel="noopener noreferrer" aria-label="Voir le dépôt '
+            + label + ' du projet ' + html.escape(project["id"].upper()) + '">'
+            + label + ' ↗</a>')
+
+
 def render_gallery(rows, activity=None, deployments=None, progression=None):
     deployments = deployments or {}
     activity = activity or {}
@@ -275,7 +299,8 @@ def render_gallery(rows, activity=None, deployments=None, progression=None):
             + render_chart(activity.get(r["id"])) + progress
             + '<nav class="project-menu" aria-label="Menu du projet ' + identity + '">'
             + '<a class="arrow" href="/' + r["slug"] + '/">Site ↗</a>'
-            + '<a class="arrow" href="/progression/' + r["id"] + '/">Progression →</a></nav></article>'
+            + '<a class="arrow" href="/progression/' + r["id"] + '/">Progression →</a>'
+            + repository_link(r) + '</nav></article>'
         )
     return page(
         "IHME — Les projets",

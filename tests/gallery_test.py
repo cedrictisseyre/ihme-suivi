@@ -30,6 +30,19 @@ class Gallery(unittest.TestCase):
         for value in ["ADRESSE_PRIVEE", "JETON_PRIVE", "DEPOT_PRIVE"]:
             self.assertNotIn(value, result)
 
+    def test_repository_links_allow_only_safe_forge_urls(self):
+        for url, label in [("https://github.com/demo/projet", "GitHub"), ("https://gitlab.com/demo/groupe/projet", "GitLab")]:
+            self.rows[0]["repository"] = url
+            page = module.render_gallery(self.rows)
+            self.assertIn('href="' + url + '"', page)
+            self.assertIn(label + ' ↗', page)
+            self.assertIn('rel="noopener noreferrer"', page)
+        for url in ["javascript:alert(1)", "https://github.com/demo/projet?token=SECRET", "https://token@github.com/demo/projet", "https://github.com.evil.test/demo/projet", "https://github.com/demo/projet#secret", "https://github.com:8443/demo/projet", "https://github.com/demo/../projet", "https://example.org/demo/projet"]:
+            self.rows[0]["repository"] = url
+            page = module.render_gallery(self.rows)
+            self.assertNotIn('class="arrow repository-link"', page)
+            self.assertNotIn("SECRET", page)
+
     def test_teacher_requires_a_different_origin(self):
         with self.assertRaises(ValueError):
             module.render_caddy("cours.example.fr", "cours.example.fr", self.rows)
