@@ -394,18 +394,19 @@ def render_caddy(teacher_host, student_host, rows):
             raise ValueError("Nom d’hôte invalide.")
     if teacher_host == student_host:
         raise ValueError("Le carnet enseignant doit avoir une origine distincte.")
-    routes = "".join(
-        "    redir /"
-        + r["slug"]
-        + " /"
-        + r["slug"]
-        + "/ 308\n    handle_path /"
-        + r["slug"]
-        + "/* {\n        reverse_proxy "
-        + r["id"]
-        + ":3000\n    }\n"
-        for r in rows
-    )
+    routes = ""
+    for r in rows:
+        prefix = "/" + r["slug"]
+        upstream = r["id"] + ":3000"
+        routes += "    redir " + prefix + " " + prefix + "/ 308\n"
+        if r.get("preserve_frontend_prefix") is True:
+            # Certaines applications montent le frontend sous BASE_PATH, mais l’API à /api.
+            routes += ("    handle " + prefix + "/api/* {\n"
+                       + "        uri strip_prefix " + prefix + "\n"
+                       + "        reverse_proxy " + upstream + "\n    }\n")
+            routes += "    handle " + prefix + "/* {\n        reverse_proxy " + upstream + "\n    }\n"
+        else:
+            routes += "    handle_path " + prefix + "/* {\n        reverse_proxy " + upstream + "\n    }\n"
     return (
         """{
     admin localhost:2019

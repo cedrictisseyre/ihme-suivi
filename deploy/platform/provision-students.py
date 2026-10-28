@@ -204,7 +204,7 @@ gallery_config.mkdir(mode=0o700, exist_ok=True)
 (gallery_config / "projects.json").write_text(
     json.dumps(
         [
-            {k: r[k] for k in ["id", "title", "slug", "repository"] if k in r}
+            {k: r[k] for k in ["id", "title", "slug", "repository", "preserve_frontend_prefix"] if k in r}
             for r in rows
         ]
     )

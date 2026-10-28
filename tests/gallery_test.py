@@ -59,6 +59,14 @@ class Gallery(unittest.TestCase):
         self.assertIn('id="theme-toggle"', module.render_pending())
         self.assertIn("ihme-gallery-theme", module.render_pending())
 
+    def test_frontend_prefix_can_be_preserved_without_changing_api_path(self):
+        self.rows[0]["preserve_frontend_prefix"] = True
+        config = module.render_caddy("suivi.example.fr", "projets.example.fr", self.rows)
+        self.assertIn("handle /score-center/api/*", config)
+        self.assertIn("uri strip_prefix /score-center", config)
+        self.assertIn("handle /score-center/*", config)
+        self.assertNotIn("handle_path /score-center/*", config)
+
     def test_chart_is_numeric_only_and_unavailable_is_not_zero(self):
         days = [
             {"date": "2026-10-" + str(i).zfill(2), "count": 1 if i == 26 else 0}
