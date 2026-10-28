@@ -69,8 +69,15 @@ for n, a in enumerate(rows, 1):
     services["db"]["networks"][project + "-db"] = {"aliases": ["postgres-" + project]}
     services["proxy"]["networks"][project + "-web"] = {}
     password = secrets.token_urlsafe(30)
+    jwt_secret = secrets.token_urlsafe(48)
     config = folder / ".env.student"
     if config.exists():
+        previous_config = dict(
+            line.split("=", 1)
+            for line in config.read_text().splitlines()
+            if "=" in line and not line.startswith("#")
+        )
+        jwt_secret = previous_config.get("JWT_SECRET") or jwt_secret
         password = (
             config.read_text()
             .split("DATABASE_URL=postgresql://ihme_" + project + ":")[1]
@@ -91,6 +98,8 @@ for n, a in enumerate(rows, 1):
         + project
         + "\nPUBLIC_ORIGIN=https://"
         + args.student_host
+        + "\nJWT_SECRET="
+        + jwt_secret
         + "\nBASE_PATH=/"
         + a["slug"]
         + "/\nDB_NETWORK="
