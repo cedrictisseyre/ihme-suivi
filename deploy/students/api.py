@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """API de déploiement privée sur socket Unix ; publiée uniquement derrière le proxy HTTPS."""
 
+from collections import deque
+import time
 import hashlib
 import hmac
 import http.server
@@ -17,7 +19,51 @@ EXECUTABLE = "/usr/local/sbin/ihme-student-deploy"
 TEACHER_BASE = Path("/etc/ihme-teacher")
 TEACHER_EXECUTABLE = "/usr/local/sbin/ihme-teacher-deploy"
 SOCKET = "/run/ihme-deploy/http.sock"
-GATE = threading.Lock()
+QUEUE_WAIT_SECONDS = 60
+
+
+class DeploymentGate:
+    """File FIFO bornée : un conteneur remplacé à la fois, vingt demandes en attente."""
+
+    def __init__(self, capacity=20):
+        self.condition = threading.Condition()
+        self.waiting = deque()
+        self.active = False
+        self.capacity = capacity
+
+    def acquire(self, timeout=60):
+        deadline = time.monotonic() + timeout
+        ticket = object()
+        with self.condition:
+            if len(self.waiting) >= self.capacity:
+                return False
+            self.waiting.append(ticket)
+            while self.active or self.waiting[0] is not ticket:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self.waiting.remove(ticket)
+                    self.condition.notify_all()
+                    return False
+                self.condition.wait(remaining)
+            self.waiting.popleft()
+            self.active = True
+            return True
+
+    def release(self):
+        with self.condition:
+            self.active = False
+            self.condition.notify_all()
+
+    def __enter__(self):
+        if not self.acquire():
+            raise TimeoutError("File de déploiement occupée.")
+        return self
+
+    def __exit__(self, *args):
+        self.release()
+
+
+GATE = DeploymentGate()
 PUBLIC_ERRORS = {"configuration", "registry_auth", "image_pull", "unhealthy", "unhealthy_rollback"}
 
 
@@ -30,6 +76,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Cache-Control", "no-store")
+        if status in (409, 429):
+            self.send_header("Retry-After", "5")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -79,12 +127,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 raise ValueError()
         except (ValueError, OSError):
             return self.reply(400, {"error": "Objet JSON avec digest SHA-256 attendu."})
-        if not GATE.acquire(blocking=False):
+        print(project + ": demande de déploiement reçue ; attente du créneau.", flush=True)
+        if not GATE.acquire(timeout=QUEUE_WAIT_SECONDS):
             return self.reply(
                 409,
-                {"error": "Un déploiement est en cours. Réessayez dans une minute."},
+                {"error": "File de déploiement occupée. La demande peut être renvoyée.", "error_code": "busy"},
             )
         try:
+            print(project + ": début du déploiement.", flush=True)
             command = (
                 [TEACHER_EXECUTABLE] if project == "suivi" else [EXECUTABLE, project]
             )
@@ -111,6 +161,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         "error_code": code
                     },
                 )
+            print(project + ": déploiement sain.", flush=True)
             return self.reply(
                 200, {"project": project, "status": "healthy", "digest": digest}
             )

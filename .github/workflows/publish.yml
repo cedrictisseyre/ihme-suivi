@@ -63,6 +63,7 @@ jobs:
           Le code est publié. Le serveur change uniquement si vous lancez le workflow avec « Déployer ».
           ' "$GITHUB_SHA" "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
       - name: Déployer sur le serveur du cours
+        timeout-minutes: 25
         if: github.event_name == 'workflow_dispatch' && inputs.deploy
         env:
           DEPLOY_URL: ${{ vars.IHME_DEPLOY_URL }}

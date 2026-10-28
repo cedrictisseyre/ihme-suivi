@@ -152,3 +152,7 @@ Le modèle GitHub Actions ne s’exécute pas sur GitLab. Un projet GitLab néce
 - [GitHub : accès et visibilité des packages](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
 - [GitHub : ajouter un secret de dépôt](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
 - [GitHub : règles de nommage des secrets](https://docs.github.com/en/actions/reference/security/secrets)
+
+### Serveur occupé (HTTP 409)
+
+Plusieurs étudiants peuvent demander un déploiement ensemble. Le serveur les fait attendre et remplace une seule application à la fois. Avec la version actuelle de `deploy/request.py`, un 409/429 temporaire affiche une attente et est retenté automatiquement, jusqu’à douze tentatives. Si votre ancien client s’arrête immédiatement sur 409, recopiez le fichier depuis `docs/templates/student/deploy/request.py` du dépôt du cours et prévoyez `timeout-minutes: 25` sur l’étape de déploiement. Une erreur 422 signifie que le déploiement a réellement été refusé ou que l’image n’est pas saine : elle nécessite une vérification, et n’est pas relancée automatiquement.

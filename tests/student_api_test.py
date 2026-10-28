@@ -8,6 +8,7 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 spec = importlib.util.spec_from_file_location(
     "student_api", Path(__file__).parents[1] / "deploy/students/api.py"
@@ -133,9 +134,51 @@ class DeployAPI(unittest.TestCase):
             self.assertEqual(data["error_code"], "deployment_failed")
             self.assertNotIn("private", json.dumps(data))
 
-    def test_concurrent_deployment_is_refused(self):
-        with api.GATE:
-            self.assertEqual(self.call()[0], 409)
+    def test_queue_timeout_is_retriable_and_never_executes(self):
+        with api.GATE, patch.object(api, "QUEUE_WAIT_SECONDS", 0.01), patch.object(api.subprocess, "run") as execute:
+            status, data = self.call()
+            self.assertEqual(status, 409)
+            self.assertEqual(data["error_code"], "busy")
+            execute.assert_not_called()
+        self.assertTrue(api.GATE.acquire(timeout=0))
+        api.GATE.release()
+
+    def test_concurrent_deployment_waits_then_succeeds(self):
+        started, release, queued = threading.Event(), threading.Event(), threading.Event()
+        results = []
+        real_wait = api.GATE.condition.wait
+
+        def wait(timeout):
+            queued.set()
+            return real_wait(timeout)
+
+        def execute(*args, **kwargs):
+            if not started.is_set():
+                started.set()
+                if not release.wait(3):
+                    raise AssertionError("Premier déploiement non libéré")
+            return SimpleNamespace(returncode=0)
+
+        with patch.object(api.subprocess, "run", side_effect=execute) as run, patch.object(api.GATE.condition, "wait", side_effect=wait):
+            first = threading.Thread(target=lambda: results.append(self.call()))
+            second = threading.Thread(target=lambda: results.append(self.call()))
+            first.start()
+            try:
+                self.assertTrue(started.wait(2))
+                second.start()
+                self.assertTrue(queued.wait(2))
+                self.assertEqual(run.call_count, 1)
+            finally:
+                release.set()
+                first.join(3)
+                if second.ident is not None:
+                    second.join(3)
+            self.assertEqual([r[0] for r in results], [200, 200])
+            self.assertEqual(run.call_count, 2)
+
+    def test_queue_capacity_is_bounded(self):
+        gate = api.DeploymentGate(capacity=0)
+        self.assertFalse(gate.acquire(timeout=0))
 
 
 if __name__ == "__main__":

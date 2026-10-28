@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -35,6 +36,8 @@ def request_deployment(url, token, digest, registry_token=""):
         raise ValueError("Jeton privé et digest SHA-256 requis.")
     body = {"digest": digest}
     if registry_token:
+        if len(registry_token) > 2048 or any(ord(c) < 33 or ord(c) > 126 for c in registry_token):
+            raise ValueError("Jeton de registre invalide.")
         body["registry_token"] = registry_token
     request = urllib.request.Request(
         url,
@@ -49,24 +52,47 @@ def request_deployment(url, token, digest, registry_token=""):
         def redirect_request(self, *args):
             return None
 
-    try:
-        with urllib.request.build_opener(NoRedirect()).open(
-            request, timeout=460
-        ) as response:
-            data = json.load(response)
-            if response.status != 200 or data.get("status") != "healthy":
-                raise ValueError("Version non saine.")
-            return data
-    except urllib.error.HTTPError as error:
-        message = "Échec HTTP " + str(error.code) + ". Consulter l’enseignant pour vérifier les journaux du serveur."
+    for attempt in range(12):
         try:
-            payload = json.loads(error.read(4096))
-            code = payload.get("error_code") if isinstance(payload, dict) else None
-            if isinstance(code, str):
-                message = PUBLIC_ERRORS.get(code, message)
-        except (ValueError, OSError):
-            pass
-        raise ValueError(message) from None
+            # 60 s de file serveur + 450 s de commande, avec une marge réseau.
+            with urllib.request.build_opener(NoRedirect()).open(
+                request, timeout=530
+            ) as response:
+                data = json.load(response)
+                if (response.status != 200 or data.get("status") != "healthy"
+                        or data.get("digest") != digest):
+                    raise ValueError("Version non saine ou digest différent.")
+                return data
+        except urllib.error.HTTPError as error:
+            # Un 409/429 est renvoyé avant exécution : seule cette attente est rejouable.
+            # Ne pas rejouer un timeout réseau : le résultat pourrait être indéterminé.
+            if error.code in (409, 429):
+                error.read(4096)
+                retry_after = (error.headers or {}).get("Retry-After", "5")
+                error.close()
+                if attempt == 11:
+                    raise ValueError(
+                        "File de déploiement toujours occupée après 12 tentatives. "
+                        "Relancer Déployer plus tard ; aucun échec de démarrage n’est établi."
+                    ) from None
+                try:
+                    delay = min(30, max(5, int(retry_after)))
+                except (ValueError, TypeError):
+                    delay = 5
+                print(f"Serveur occupé : attente de {delay} s avant la tentative {attempt + 2}/12.", flush=True)
+                time.sleep(delay)
+                continue
+            message = "Échec HTTP " + str(error.code) + ". Consulter l’enseignant pour vérifier les journaux du serveur."
+            try:
+                payload = json.loads(error.read(4096))
+                code = payload.get("error_code") if isinstance(payload, dict) else None
+                if isinstance(code, str):
+                    message = PUBLIC_ERRORS.get(code, message)
+            except (ValueError, OSError):
+                pass
+            finally:
+                error.close()
+            raise ValueError(message) from None
 
 
 
