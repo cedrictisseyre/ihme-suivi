@@ -21,7 +21,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?}
       CLIENT_ORIGIN: ${PUBLIC_ORIGIN:?}
-      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:?}
     expose: ["3000"]
     networks:
       database: {}
