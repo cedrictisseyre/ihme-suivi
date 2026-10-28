@@ -198,6 +198,8 @@ test("bilan persistant, priorité des corrections, publication explicite et cons
         .expect(200)
     ).body;
     assert.ok(p.milestones.every((m) => m.status === "doing"));
+    assert.equal(p.progress, 100);
+    assert.equal(p.teacher_progress, 0);
     assert.equal(p.progression.history.length, 1);
     await db.query(
       "INSERT INTO git_snapshots(project_id,last_sha) VALUES($1,$2)",

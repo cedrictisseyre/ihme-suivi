@@ -330,7 +330,7 @@ function App() {
                     : 0}
                   %
                 </strong>
-                jalons validés en moyenne
+                des jalons couverts en moyenne (enseignant + automatique)
               </article>
             </div>
             <div className="toolbar">
@@ -418,7 +418,14 @@ function App() {
                       <span style={{ width: p.progress + "%" }} />
                     </div>
                     <div className="between">
-                      <span>{p.progress}% des jalons validés</span>
+                      <span title="Validation enseignante ou indices automatiques, sauf correction de l’enseignant.">
+                        {p.progress}% des jalons couverts (enseignant +
+                        automatique)
+                        <small>
+                          {" "}
+                          · {p.teacher_progress}% validés par l’enseignant
+                        </small>
+                      </span>
                       <button
                         className="ghost"
                         onClick={() => setSelected(p)}

@@ -123,6 +123,17 @@ export function projectSignals(
   return {
     progress: m.length
       ? Math.round(
+          (100 *
+            m.filter(
+              (x) =>
+                x.status === "done" ||
+                (!x.manual_override && x.automatic?.observed === true),
+            ).length) /
+            m.length,
+        )
+      : 0,
+    teacher_progress: m.length
+      ? Math.round(
           (100 * m.filter((x) => x.status === "done").length) / m.length,
         )
       : 0,

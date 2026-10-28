@@ -4,7 +4,7 @@ Application pédagogique React 19, Express 5, PostgreSQL. Node 24 sert React com
 
 ## Fonctionnement
 
-- Promotion : cartes compactes, recherche, progression des six jalons, alertes de blocage, échéances et revues anciennes. Un mini-histogramme montre les commits par date sur les 14 derniers jours (heure de Paris).
+- Promotion : cartes compactes, recherche, progression des six jalons (validation enseignante ou indices automatiques, avec priorité aux corrections enseignantes), pourcentage enseignant distinct, alertes de blocage, échéances et revues anciennes. Un mini-histogramme montre les commits par date sur les 14 derniers jours (heure de Paris).
 - Une fiche par étudiant : identifiant pédagogique, objectif, dépôt GitHub/GitLab et URL déployée.
 - **Activité Git réelle** : lecture à la demande des commits de la branche par défaut, pagination, lien vers le commit et sélection du SHA pour la revue. Aucune exécution du code étudiant.
 - Jalons : statut, échéance et preuve/observation.

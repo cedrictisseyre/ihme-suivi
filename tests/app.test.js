@@ -195,3 +195,19 @@ test("synchronisation Git privée : dernier commit persisté dans la promotion",
     "a".repeat(40),
   );
 });
+
+test("progression combinée : union des validations et indices, priorité enseignante", () => {
+  const milestones = [
+    { status: "done", manual_override: true, automatic: { observed: true } },
+    { status: "doing", manual_override: false, automatic: { observed: true } },
+    { status: "todo", manual_override: true, automatic: { observed: true } },
+    { status: "blocked", manual_override: true, automatic: { observed: true } },
+    { status: "todo", automatic: { observed: false } },
+    { status: "todo" },
+  ];
+  const signals = projectSignals({ milestones });
+  assert.equal(signals.progress, 33);
+  assert.equal(signals.teacher_progress, 17);
+  assert.equal(projectSignals({ milestones: [] }).progress, 0);
+  assert.equal(projectSignals({ milestones: [] }).teacher_progress, 0);
+});
